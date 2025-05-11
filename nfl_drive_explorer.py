@@ -33,23 +33,35 @@ app.layout = html.Div([
     html.Br(),
 
     html.Label("Select Game:"),
-    dcc.Dropdown(id='game-dropdown', placeholder="Choose a game..."),
+    dcc.Loading(
+        dcc.Dropdown(id='game-dropdown', placeholder="Choose a game..."),
+        type="default"
+    ),
 
     html.Br(),
 
     html.Label("Select Drive:"),
-    dcc.Dropdown(id='drive-dropdown', placeholder="Choose a drive..."),
+    dcc.Loading(
+        dcc.Dropdown(id='drive-dropdown', placeholder="Choose a drive..."),
+        type="default"
+    ),
 
     html.Br(),
 
-    html.Div(id='drive-table'),
+    dcc.Loading(
+        html.Div(id='drive-table'),
+        type="circle"
+    ),
 
     html.Br(),
 
-    dcc.Graph(id='wp-graph')
+    dcc.Loading(
+        dcc.Graph(id='wp-graph'),
+        type="circle"
+    )
 ])
 
-# Load season data after selection
+# Load season data on selection
 @app.callback(
     Output('season-data', 'data'),
     Input('season-dropdown', 'value')
@@ -60,10 +72,10 @@ def load_season_data(season):
     df = nfl.import_pbp_data([season])
     df = df[df['play_type'].notna()]
     df['season'] = df['season'].astype(int)
-    df['week'] = df['week'].astype(int)
+    df['week'] = pd.to_numeric(df['week'], errors='coerce').astype('Int64')
     return df.to_json(date_format='iso', orient='split')
 
-# Update game dropdown
+# Update game dropdown based on season & week
 @app.callback(
     Output('game-dropdown', 'options'),
     [Input('season-data', 'data'),
@@ -74,14 +86,19 @@ def update_games_dropdown(json_data, week):
         return []
 
     df = pd.read_json(json_data, orient='split')
+    df = df[df['week'] == week]
+
+    if df.empty:
+        return []
+
     game_info = (
         df[['game_id', 'season', 'week', 'home_team', 'away_team']]
         .drop_duplicates()
         .assign(display=lambda d: d.apply(
             lambda row: f"{row['away_team']} @ {row['home_team']} (Week {str(row['week']).zfill(2)}, {row['season']})", axis=1))
     )
-    filtered = game_info[game_info['week'] == week]
-    return [{'label': row['display'], 'value': row['game_id']} for _, row in filtered.iterrows()]
+
+    return [{'label': row['display'], 'value': row['game_id']} for _, row in game_info.iterrows()]
 
 # Update drive dropdown with summaries
 @app.callback(
@@ -119,7 +136,7 @@ def update_drive_options(game_id, json_data):
 
     return drive_summaries
 
-# Show drive table and WP graph
+# Show drive summary and win probability graph
 @app.callback(
     [Output('drive-table', 'children'),
      Output('wp-graph', 'figure')],
@@ -182,6 +199,7 @@ def display_drive_data(game_id, drive, json_data):
 
     return table, fig
 
+# Run with explicit host/port for Render
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8050))  # Render sets the PORT env variable
+    port = int(os.environ.get("PORT", 8050))
     app.run(host="0.0.0.0", port=port, debug=False)
