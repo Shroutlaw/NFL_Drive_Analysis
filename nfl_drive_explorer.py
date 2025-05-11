@@ -11,7 +11,7 @@ REFRESH_DATA = False
 # === LOAD OR DOWNLOAD DATA ===
 if REFRESH_DATA or not os.path.exists(DATA_PATH):
     print("Downloading play-by-play data...")
-    pbp_df = nfl.import_pbp_data(years=list(range(2022, 2025)))
+    pbp_df = nfl.import_pbp_data(years=list(range(2024, 2025)))
     pbp_df = pbp_df[pbp_df['play_type'].notna()]
     pbp_df.to_parquet(DATA_PATH)
 else:
