@@ -69,18 +69,14 @@ app.layout = html.Div([
 def load_season_data(season):
     if season is None:
         return {}
-    df = nfl.import_pbp_data([season])
-    df = df[df['play_type'].notna()]
+    file_path = f"data/{season}.parquet"
+    if not os.path.exists(file_path):
+        return {}
+    df = pd.read_parquet(file_path)
     df['season'] = df['season'].astype(int)
     df['week'] = pd.to_numeric(df['week'], errors='coerce').astype('Int64')
     return df.to_json(date_format='iso', orient='split')
 
-# Update game dropdown based on season & week
-@app.callback(
-    Output('game-dropdown', 'options'),
-    [Input('season-data', 'data'),
-     Input('week-dropdown', 'value')]
-)
 def update_games_dropdown(json_data, week):
     if not json_data or week is None:
         return []
