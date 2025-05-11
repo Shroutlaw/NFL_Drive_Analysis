@@ -4,46 +4,19 @@ import nfl_data_py as nfl
 from dash import Dash, html, dcc, Input, Output
 import plotly.express as px
 
-# === CONFIG ===
-DATA_PATH = "pbp_data.parquet"
-REFRESH_DATA = False
-
-# === LOAD OR DOWNLOAD DATA ===
-if REFRESH_DATA or not os.path.exists(DATA_PATH):
-    print("Downloading play-by-play data...")
-    pbp_df = nfl.import_pbp_data(years=list(range(2024, 2025)))
-    pbp_df = pbp_df[pbp_df['play_type'].notna()]
-    pbp_df.to_parquet(DATA_PATH)
-else:
-    print("Loading cached data...")
-    pbp_df = pd.read_parquet(DATA_PATH)
-
-# === EXTRACT SEASON AND WEEK LIST ===
-pbp_df['season'] = pbp_df['season'].astype(int)
-pbp_df['week'] = pbp_df['week'].astype(int)
-seasons = sorted(pbp_df['season'].unique())
-weeks = sorted(pbp_df['week'].unique())
-
-# === PREP GAME DROPDOWN FORMAT ===
-def get_game_display(row):
-    return f"{row['away_team']} @ {row['home_team']} (Week {str(row['week']).zfill(2)}, {row['season']})"
-
-game_info = (
-    pbp_df[['game_id', 'season', 'week', 'home_team', 'away_team']]
-    .drop_duplicates()
-    .assign(display=lambda df: df.apply(get_game_display, axis=1))
-)
-
-# === INITIALIZE DASH APP ===
+# Initialize Dash app
 app = Dash(__name__)
 app.title = "NFL Drive Explorer"
 
+# Layout
 app.layout = html.Div([
     html.H1("NFL Drive Explorer"),
 
+    dcc.Store(id='season-data'),
+
     html.Label("Select Season:"),
     dcc.Dropdown(
-        options=[{'label': str(s), 'value': s} for s in seasons],
+        options=[{'label': str(s), 'value': s} for s in range(1999, 2025)],
         id='season-dropdown',
         placeholder="Choose a season..."
     ),
@@ -52,8 +25,8 @@ app.layout = html.Div([
 
     html.Label("Select Week:"),
     dcc.Dropdown(
-        options=[{'label': f"Week {w}", 'value': w} for w in weeks],
         id='week-dropdown',
+        options=[{'label': f"Week {w}", 'value': w} for w in range(1, 19)],
         placeholder="Choose a week..."
     ),
 
@@ -76,34 +49,56 @@ app.layout = html.Div([
     dcc.Graph(id='wp-graph')
 ])
 
-# === CALLBACK: UPDATE GAMES BASED ON SEASON & WEEK ===
+# Load season data after selection
+@app.callback(
+    Output('season-data', 'data'),
+    Input('season-dropdown', 'value')
+)
+def load_season_data(season):
+    if season is None:
+        return {}
+    df = nfl.import_pbp_data([season])
+    df = df[df['play_type'].notna()]
+    df['season'] = df['season'].astype(int)
+    df['week'] = df['week'].astype(int)
+    return df.to_json(date_format='iso', orient='split')
+
+# Update game dropdown
 @app.callback(
     Output('game-dropdown', 'options'),
-    [Input('season-dropdown', 'value'),
+    [Input('season-data', 'data'),
      Input('week-dropdown', 'value')]
 )
-def update_games_dropdown(season, week):
-    if season is None or week is None:
+def update_games_dropdown(json_data, week):
+    if not json_data or week is None:
         return []
 
-    filtered = game_info[(game_info['season'] == season) & (game_info['week'] == week)]
+    df = pd.read_json(json_data, orient='split')
+    game_info = (
+        df[['game_id', 'season', 'week', 'home_team', 'away_team']]
+        .drop_duplicates()
+        .assign(display=lambda d: d.apply(
+            lambda row: f"{row['away_team']} @ {row['home_team']} (Week {str(row['week']).zfill(2)}, {row['season']})", axis=1))
+    )
+    filtered = game_info[game_info['week'] == week]
     return [{'label': row['display'], 'value': row['game_id']} for _, row in filtered.iterrows()]
 
-# === CALLBACK: UPDATE DRIVE OPTIONS ===
+# Update drive dropdown with summaries
 @app.callback(
     Output('drive-dropdown', 'options'),
-    Input('game-dropdown', 'value')
+    [Input('game-dropdown', 'value'),
+     Input('season-data', 'data')]
 )
-def update_drive_options(game_id):
-    if not game_id:
+def update_drive_options(game_id, json_data):
+    if not game_id or not json_data:
         return []
 
-    df = pbp_df[pbp_df['game_id'] == game_id].copy()
+    df = pd.read_json(json_data, orient='split')
     df = df[df['drive'].notna()]
     drive_summaries = []
 
-    for drive_num in sorted(df['drive'].unique()):
-        drive_df = df[df['drive'] == drive_num]
+    for drive_num in sorted(df[df['game_id'] == game_id]['drive'].unique()):
+        drive_df = df[(df['game_id'] == game_id) & (df['drive'] == drive_num)]
         if drive_df.empty:
             continue
 
@@ -124,16 +119,19 @@ def update_drive_options(game_id):
 
     return drive_summaries
 
-# === CALLBACK: SHOW DRIVE DETAILS ===
+# Show drive table and WP graph
 @app.callback(
     [Output('drive-table', 'children'),
      Output('wp-graph', 'figure')],
     [Input('game-dropdown', 'value'),
-     Input('drive-dropdown', 'value')]
+     Input('drive-dropdown', 'value'),
+     Input('season-data', 'data')]
 )
-def display_drive_data(game_id, drive):
-    if not game_id or drive is None:
+def display_drive_data(game_id, drive, json_data):
+    if not game_id or drive is None or not json_data:
         return html.Div("Please select a game and drive."), px.line(title="Win Probability (wp)")
+
+    df = pd.read_json(json_data, orient='split')
 
     columns = [
         'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'down',
@@ -141,16 +139,15 @@ def display_drive_data(game_id, drive):
         'desc', 'total_away_score', 'total_home_score'
     ]
 
-    df = pbp_df[(pbp_df['game_id'] == game_id) & (pbp_df['drive'] == drive)].copy()
-    df_display = df[columns]
+    df_drive = df[(df['game_id'] == game_id) & (df['drive'] == drive)].copy()
+    df_display = df_drive[columns]
 
-    # === DRIVE SUMMARY ===
-    num_plays = len(df)
-    epa_total = round(df['epa'].sum(), 2)
-    wp_change = round(df['wp'].iloc[-1] - df['wp'].iloc[0], 4)
-    total_yards = df['yards_gained'].sum()
-    start_away_score = df['total_away_score'].iloc[0]
-    start_home_score = df['total_home_score'].iloc[0]
+    num_plays = len(df_drive)
+    epa_total = round(df_drive['epa'].sum(), 2)
+    wp_change = round(df_drive['wp'].iloc[-1] - df_drive['wp'].iloc[0], 4)
+    total_yards = df_drive['yards_gained'].sum()
+    start_away_score = df_drive['total_away_score'].iloc[0]
+    start_home_score = df_drive['total_home_score'].iloc[0]
 
     drive_summary = html.Div([
         html.H4("Drive Summary"),
@@ -163,7 +160,6 @@ def display_drive_data(game_id, drive):
         ])
     ], style={'marginBottom': '20px'})
 
-    # === TABLE ===
     table = html.Div([
         drive_summary,
         html.Table([
@@ -181,12 +177,10 @@ def display_drive_data(game_id, drive):
         })
     ])
 
-    # === GRAPH ===
-    fig = px.line(df, x=df.index, y='wp', title='Win Probability During Drive')
+    fig = px.line(df_drive, x=df_drive.index, y='wp', title='Win Probability During Drive')
     fig.update_layout(transition_duration=500)
 
     return table, fig
 
-# === RUN APP ===
 if __name__ == '__main__':
     app.run(debug=True)
