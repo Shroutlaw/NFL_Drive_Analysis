@@ -84,7 +84,7 @@ app.layout = html.Div([
 
     html.Div(id='drive-table'),
     html.Br(),
-    dcc.Graph(id='wp-graph')
+    html.Div(id='wp-graph')
 ])
 
 @app.callback(
@@ -214,7 +214,7 @@ def update_suggested_drives(season, week):
 
 @app.callback(
     [Output('drive-table', 'children'),
-     Output('wp-graph', 'figure')],
+     Output('wp-graph', 'children')],
     [Input('drive-dropdown', 'value'),
      Input('suggested-up-dropdown', 'value'),
      Input('suggested-down-dropdown', 'value')],
