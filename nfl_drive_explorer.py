@@ -143,6 +143,30 @@ def update_drive_options(game_id, season, week):
     return options
 
 @app.callback(
+    Output('game-dropdown', 'options'),
+    [Input('season-dropdown', 'value'),
+     Input('week-dropdown', 'value')]
+)
+def update_games_dropdown(season, week):
+    if season is None or week is None:
+        return []
+
+    df = load_season_data(season)
+    if df is None:
+        return []
+
+    df = df[df['week'] == week]
+
+    games = (
+        df[['game_id', 'home_team', 'away_team']]
+        .drop_duplicates()
+        .assign(display=lambda x: x.apply(
+            lambda row: f"{row['away_team']} @ {row['home_team']} ({row['game_id']})", axis=1))
+    )
+
+    return [{'label': row['display'], 'value': row['game_id']} for _, row in games.iterrows()]
+
+@app.callback(
     [Output('suggested-up-dropdown', 'options'),
      Output('suggested-down-dropdown', 'options')],
     [Input('season-dropdown', 'value'),
