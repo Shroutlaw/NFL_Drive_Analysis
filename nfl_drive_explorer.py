@@ -168,4 +168,5 @@ def display_drive_data(game_id, drive, season, week):
 # Run on Render-compatible port
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8050))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(debug=False, dev_tools_ui=False, dev_tools_props_check=False,
+        host="0.0.0.0", port=port)
