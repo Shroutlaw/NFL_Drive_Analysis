@@ -242,7 +242,7 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
         game_id, drive_num = val.split("|")
         df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == int(drive_num))]
 
-    # Define columns for table
+    # Display table
     columns = [
         'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'down',
         'ydstogo', 'yards_gained', 'play_type', 'epa', 'wp',
@@ -250,7 +250,6 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
     ]
     df_display = df[columns]
 
-    # Create data table
     table = html.Div([
         html.Table([
             html.Thead(html.Tr([html.Th(col) for col in columns])),
@@ -267,14 +266,14 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
         })
     ])
 
-    # Build Quarter + Clock formatted X-axis (as string list)
+    # Create x-axis for win probability graph
     if 'qtr' in df.columns and 'game_clock' in df.columns:
         x_labels = (df['qtr'].astype(str).radd("Q") + " " + df['game_clock']).astype(str).tolist()
     else:
         x_labels = df.index.astype(str).tolist()
 
-    # Build win probability line chart
-    fig = px.line(
+    # WP Line Chart
+    wp_fig = px.line(
         df,
         x=x_labels,
         y='wp',
@@ -283,23 +282,52 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
         markers=True
     )
 
-    fig.update_traces(
+    wp_fig.update_traces(
         line=dict(width=3, color='#1f77b4'),
         marker=dict(size=6),
         hovertemplate="<b>Time:</b> %{x}<br><b>WP:</b> %{y:.3f}<extra></extra>"
     )
 
-    fig.update_layout(
+    wp_fig.update_layout(
         title_font_size=22,
         xaxis_title="Game Time (Quarter + Clock)",
         yaxis_title="Win Probability",
         yaxis=dict(range=[0, 1]),
         template='plotly_white',
         hovermode='x unified',
-        margin=dict(l=40, r=30, t=50, b=40)
+        margin=dict(l=40, r=30, t=50, b=40),
+        height=400
     )
 
-    return table, fig
+    # Run vs Pass Chart
+    play_mix_df = df[df['play_type'].isin(['run', 'pass'])]
+    play_counts = play_mix_df['play_type'].value_counts().reset_index()
+    play_counts.columns = ['play_type', 'count']
+
+    mix_fig = px.bar(
+        play_counts,
+        x='count',
+        y='play_type',
+        orientation='h',
+        title='Run vs Pass Mix',
+        labels={'count': 'Play Count', 'play_type': 'Play Type'},
+        color='play_type',
+        color_discrete_map={'run': '#2ca02c', 'pass': '#1f77b4'}
+    )
+
+    mix_fig.update_layout(
+        title_font_size=20,
+        margin=dict(l=20, r=20, t=50, b=20),
+        height=400
+    )
+
+    # Combine graphs side-by-side
+    charts = html.Div([
+        html.Div(dcc.Graph(figure=wp_fig), style={'width': '60%', 'display': 'inline-block', 'verticalAlign': 'top'}),
+        html.Div(dcc.Graph(figure=mix_fig), style={'width': '38%', 'display': 'inline-block', 'paddingLeft': '2%'})
+    ])
+
+    return table, charts
 
 # Run on Render
 if __name__ == '__main__':
