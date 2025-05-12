@@ -57,7 +57,7 @@ app.layout = html.Div([
         html.Div([
             html.Label("Game:"),
             dcc.Dropdown(id='game-dropdown', placeholder="Game")
-        ], style={'width': '40%', 'display': 'inline-block'}),
+        ], id='game-dropdown-container', style={'width': '40%', 'display': 'inline-block'}),
     ], style={'marginBottom': '20px'}),
 
     html.Div([
@@ -85,13 +85,14 @@ app.layout = html.Div([
 
 @app.callback(
     [Output('chronological-container', 'style'),
-     Output('suggested-container', 'style')],
+     Output('suggested-container', 'style'),
+     Output('game-dropdown-container', 'style')],
     Input('view-mode', 'value')
 )
 def toggle_view_mode(view_mode):
     if view_mode == 'chronological':
-        return {'display': 'block'}, {'display': 'none'}
-    return {'display': 'none'}, {'display': 'block'}
+        return {'display': 'block'}, {'display': 'none'}, {'display': 'inline-block'}
+    return {'display': 'none'}, {'display': 'block'}, {'display': 'none'}
 
 @app.callback(
     Output('drive-dropdown', 'options'),
