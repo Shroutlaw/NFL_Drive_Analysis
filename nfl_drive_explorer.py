@@ -249,7 +249,7 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
     ]
     df_display = df[columns]
 
-    # Build the table
+    # --- Build Data Table ---
     table = html.Div([
         html.Table([
             html.Thead(html.Tr([html.Th(col) for col in columns])),
@@ -266,28 +266,31 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
         })
     ])
 
-    # Use game_clock as x-axis if available
-    x_axis = df['game_clock'] if 'game_clock' in df.columns else df.index
+    # --- Create X-axis as formatted time labels ---
+    if 'qtr' in df.columns and 'game_clock' in df.columns:
+        x_labels = df['qtr'].astype(str).radd("Q") + " " + df['game_clock']
+    else:
+        x_labels = df.index.astype(str)
 
-    # Create the WP line chart
+    # --- Build WP Line Chart ---
     fig = px.line(
         df,
-        x=x_axis,
+        x=x_labels,
         y='wp',
         title='Win Probability During Drive',
-        labels={'x': 'Game Clock', 'wp': 'Win Probability'},
+        labels={'x': 'Game Time', 'wp': 'Win Probability'},
         markers=True
     )
 
     fig.update_traces(
-        line=dict(width=3, color='#1f77b4'),  # Optional: customize color
+        line=dict(width=3, color='#1f77b4'),
         marker=dict(size=6),
         hovertemplate="<b>Time:</b> %{x}<br><b>WP:</b> %{y:.3f}<extra></extra>"
     )
 
     fig.update_layout(
         title_font_size=22,
-        xaxis_title="Game Clock",
+        xaxis_title="Game Time (Quarter + Clock)",
         yaxis_title="Win Probability",
         yaxis=dict(range=[0, 1]),
         template='plotly_white',
