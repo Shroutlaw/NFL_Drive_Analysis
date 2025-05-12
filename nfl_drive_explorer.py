@@ -1,23 +1,40 @@
 import os
 import pandas as pd
-from dash import Dash, html, dcc, Input, Output
+from dash import Dash, html, dcc, Input, Output, State
 import plotly.express as px
 
-# Initialize Dash app
 app = Dash(__name__)
 app.title = "NFL Drive Explorer"
 
-# Define available seasons
 AVAILABLE_SEASONS = list(range(1999, 2025))
-
-# Local cache
 season_cache = {}
 
-# Layout
+def load_season_data(season):
+    if season not in season_cache:
+        path = f"seasons/nfl_{season}.csv"
+        if os.path.exists(path):
+            df = pd.read_csv(path)
+            df['season'] = pd.to_numeric(df['season'], errors='coerce').astype('Int64')
+            df['week'] = pd.to_numeric(df['week'], errors='coerce').astype('Int64')
+            season_cache[season] = df
+    return season_cache.get(season)
+
 app.layout = html.Div([
     html.H1("NFL Drive Explorer"),
 
-    # Row with Season, Week, Game dropdowns
+    html.Div([
+        html.Label("View Mode:"),
+        dcc.RadioItems(
+            id='view-mode',
+            options=[
+                {'label': 'Suggested', 'value': 'suggested'},
+                {'label': 'Chronological', 'value': 'chronological'}
+            ],
+            value='suggested',
+            labelStyle={'display': 'inline-block', 'marginRight': '15px'}
+        )
+    ], style={'marginBottom': '20px'}),
+
     html.Div([
         html.Div([
             html.Label("Season:"),
@@ -26,7 +43,7 @@ app.layout = html.Div([
                 id='season-dropdown',
                 placeholder="Season"
             )
-        ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
+        ], style={'width': '30%', 'display': 'inline-block', 'paddingRight': '10px'}),
 
         html.Div([
             html.Label("Week:"),
@@ -35,7 +52,7 @@ app.layout = html.Div([
                 options=[{'label': f"Week {w}", 'value': w} for w in range(1, 19)],
                 placeholder="Week"
             )
-        ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
+        ], style={'width': '30%', 'display': 'inline-block', 'paddingRight': '10px'}),
 
         html.Div([
             html.Label("Game:"),
@@ -43,50 +60,38 @@ app.layout = html.Div([
         ], style={'width': '40%', 'display': 'inline-block'}),
     ], style={'marginBottom': '20px'}),
 
-    # Drive dropdown on its own line
     html.Div([
-        html.Label("Drive:"),
+        html.Label("Drive (Chronological):"),
         dcc.Dropdown(id='drive-dropdown', placeholder="Choose a drive...")
-    ], style={'marginBottom': '10px'}),
+    ], id='chronological-container', style={'display': 'none', 'marginBottom': '20px'}),
 
-    # Drive table + win probability graph
+    html.Div([
+        html.H3("Turning the Tides"),
+
+        html.Label("Expected Loss ➜ Expected Win:"),
+        dcc.Dropdown(id='suggested-up-dropdown', placeholder="Choose a swing drive..."),
+
+        html.Br(),
+
+        html.Label("Expected Win ➜ Expected Loss:"),
+        dcc.Dropdown(id='suggested-down-dropdown', placeholder="Choose a collapse drive..."),
+
+    ], id='suggested-container', style={'display': 'block', 'marginBottom': '20px'}),
+
     html.Div(id='drive-table'),
     html.Br(),
     dcc.Graph(id='wp-graph')
 ])
 
 @app.callback(
-    Output('game-dropdown', 'options'),
-    [Input('season-dropdown', 'value'),
-     Input('week-dropdown', 'value')]
+    [Output('chronological-container', 'style'),
+     Output('suggested-container', 'style')],
+    Input('view-mode', 'value')
 )
-def update_game_options(season, week):
-    if season is None or week is None:
-        return []
-
-    if season not in season_cache:
-        path = f"seasons/nfl_{season}.csv"
-        if not os.path.exists(path):
-            return []
-        df = pd.read_csv(path)
-        df['season'] = pd.to_numeric(df['season'], errors='coerce').astype('Int64')
-        df['week'] = pd.to_numeric(df['week'], errors='coerce').astype('Int64')
-        season_cache[season] = df
-    else:
-        df = season_cache[season]
-
-    week_df = df[df['week'] == week]
-    if week_df.empty:
-        return []
-
-    games = (
-        week_df[['game_id', 'home_team', 'away_team']]
-        .drop_duplicates()
-        .assign(display=lambda x: x.apply(
-            lambda row: f"{row['away_team']} @ {row['home_team']} (Week {str(week).zfill(2)}, {season})", axis=1))
-    )
-
-    return [{'label': row['display'], 'value': row['game_id']} for _, row in games.iterrows()]
+def toggle_view_mode(view_mode):
+    if view_mode == 'chronological':
+        return {'display': 'block'}, {'display': 'none'}
+    return {'display': 'none'}, {'display': 'block'}
 
 @app.callback(
     Output('drive-dropdown', 'options'),
@@ -95,62 +100,115 @@ def update_game_options(season, week):
      Input('week-dropdown', 'value')]
 )
 def update_drive_options(game_id, season, week):
-    if not game_id or season is None or week is None or season not in season_cache:
+    if not game_id or season is None or week is None:
         return []
 
-    df = season_cache[season]
-    df = df[(df['week'] == week) & (df['game_id'] == game_id)]
+    df = load_season_data(season)
+    if df is None:
+        return []
 
-    drive_options = []
+    df = df[(df['week'] == week) & (df['game_id'] == game_id)]
+    options = []
     for drive_num in sorted(df['drive'].dropna().unique()):
         drive_df = df[df['drive'] == drive_num]
         if drive_df.empty:
             continue
-
-        num_plays = len(drive_df)
-        epa_total = round(drive_df['epa'].sum(), 4)
-        wpa_total = round(drive_df['wpa'].sum(), 4) if 'wpa' in drive_df else 0.0
-        total_yards = drive_df['yards_gained'].sum()
-        start_away_score = int(drive_df['total_away_score'].iloc[0])
-        start_home_score = int(drive_df['total_home_score'].iloc[0])
-        posteam = drive_df['posteam'].iloc[0]
-        defteam = drive_df['defteam'].iloc[0]
-
+        epa = round(drive_df['epa'].sum(), 4)
+        wpa = round(drive_df['wpa'].sum(), 4) if 'wpa' in drive_df else 0.0
+        yds = drive_df['yards_gained'].sum()
+        a_score = int(drive_df['total_away_score'].iloc[0])
+        h_score = int(drive_df['total_home_score'].iloc[0])
+        o = drive_df['posteam'].iloc[0]
+        d = drive_df['defteam'].iloc[0]
         label = (
-            f"Drive {str(int(drive_num)).ljust(3)} | "
-            f"Plays: {str(num_plays).ljust(3)} | "
-            f"EPA: {str(epa_total).ljust(8)} | "
-            f"WPA: {str(wpa_total).ljust(8)} | "
-            f"Yds: {str(total_yards).ljust(4)} | "
-            f"Score: AWY {start_away_score} - {start_home_score} HOM | "
-            f"O: {posteam} vs D: {defteam}"
+            f"Drive {int(drive_num):<3} | WPA: {wpa:<8} | EPA: {epa:<8} | "
+            f"Yds: {yds:<4} | Score: AWY {a_score} - {h_score} HOM | "
+            f"O: {o} vs D: {d}"
         )
+        options.append({'label': label, 'value': int(drive_num)})
+    return options
 
-        drive_options.append({'label': label, 'value': int(drive_num)})
+@app.callback(
+    [Output('suggested-up-dropdown', 'options'),
+     Output('suggested-down-dropdown', 'options')],
+    [Input('season-dropdown', 'value'),
+     Input('week-dropdown', 'value')]
+)
+def update_suggested_drives(season, week):
+    if season is None or week is None:
+        return [], []
 
-    return drive_options
+    df = load_season_data(season)
+    if df is None:
+        return [], []
+
+    df = df[df['week'] == week]
+    up, down = [], []
+
+    for game_id in df['game_id'].unique():
+        game_df = df[df['game_id'] == game_id]
+        for drive_num in game_df['drive'].dropna().unique():
+            drive_df = game_df[game_df['drive'] == drive_num]
+            if drive_df.empty:
+                continue
+            start_wp = drive_df['wp'].iloc[0]
+            end_wp = drive_df['wp'].iloc[-1]
+            if start_wp < 0.5 and end_wp > 0.5:
+                category = up
+            elif start_wp > 0.5 and end_wp < 0.5:
+                category = down
+            else:
+                continue
+            epa = round(drive_df['epa'].sum(), 4)
+            wpa = round(drive_df['wpa'].sum(), 4) if 'wpa' in drive_df else 0.0
+            yds = drive_df['yards_gained'].sum()
+            a_score = int(drive_df['total_away_score'].iloc[0])
+            h_score = int(drive_df['total_home_score'].iloc[0])
+            o = drive_df['posteam'].iloc[0]
+            d = drive_df['defteam'].iloc[0]
+            label = (
+                f"{game_id} | Drive {int(drive_num):<3} | WPA: {wpa:<8} | EPA: {epa:<8} | "
+                f"Yds: {yds:<4} | Score: AWY {a_score} - {h_score} HOM | "
+                f"O: {o} vs D: {d}"
+            )
+            category.append({'label': label, 'value': f"{game_id}|{int(drive_num)}"})
+    return up, down
 
 @app.callback(
     [Output('drive-table', 'children'),
      Output('wp-graph', 'figure')],
-    [Input('game-dropdown', 'value'),
-     Input('drive-dropdown', 'value'),
-     Input('season-dropdown', 'value'),
-     Input('week-dropdown', 'value')]
+    [Input('drive-dropdown', 'value'),
+     Input('suggested-up-dropdown', 'value'),
+     Input('suggested-down-dropdown', 'value')],
+    [State('season-dropdown', 'value'),
+     State('week-dropdown', 'value'),
+     State('view-mode', 'value'),
+     State('game-dropdown', 'value')]
 )
-def display_drive_data(game_id, drive, season, week):
-    if not game_id or drive is None or season is None or week is None or season not in season_cache:
-        return html.Div("Please select a game and drive."), px.line(title="Win Probability (wp)")
+def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, game_id):
+    if season is None or week is None:
+        return html.Div("Select inputs."), px.line(title="Win Probability")
 
-    df = season_cache[season]
-    df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == drive)]
+    df = load_season_data(season)
+    if df is None:
+        return html.Div("No data."), px.line(title="Win Probability")
+
+    if view_mode == 'chronological':
+        if chron_drive is None or game_id is None:
+            return html.Div("Select a drive."), px.line(title="Win Probability")
+        df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == chron_drive)]
+    else:
+        val = up_val or down_val
+        if not val:
+            return html.Div("Select a suggested drive."), px.line(title="Win Probability")
+        game_id, drive_num = val.split("|")
+        df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == int(drive_num))]
 
     columns = [
         'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'down',
         'ydstogo', 'yards_gained', 'play_type', 'epa', 'wp',
         'desc', 'total_away_score', 'total_home_score'
     ]
-
     df_display = df[columns]
 
     table = html.Div([
@@ -171,11 +229,10 @@ def display_drive_data(game_id, drive, season, week):
 
     fig = px.line(df, x=df.index, y='wp', title='Win Probability During Drive')
     fig.update_layout(transition_duration=500)
-
     return table, fig
 
-# Run on Render-compatible port
+# Run on Render
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8050))
     app.run(debug=False, dev_tools_ui=False, dev_tools_props_check=False,
-        host="0.0.0.0", port=port)
+            host='0.0.0.0', port=port)
