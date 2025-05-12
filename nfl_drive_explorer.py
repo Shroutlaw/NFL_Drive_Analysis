@@ -242,6 +242,7 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
         game_id, drive_num = val.split("|")
         df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == int(drive_num))]
 
+    # Define columns for table
     columns = [
         'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'down',
         'ydstogo', 'yards_gained', 'play_type', 'epa', 'wp',
@@ -249,7 +250,7 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
     ]
     df_display = df[columns]
 
-    # --- Build Data Table ---
+    # Create data table
     table = html.Div([
         html.Table([
             html.Thead(html.Tr([html.Th(col) for col in columns])),
@@ -266,19 +267,19 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
         })
     ])
 
-    # --- Create X-axis as formatted time labels ---
+    # Build Quarter + Clock formatted X-axis (as string list)
     if 'qtr' in df.columns and 'game_clock' in df.columns:
-        x_labels = df['qtr'].astype(str).radd("Q") + " " + df['game_clock']
+        x_labels = (df['qtr'].astype(str).radd("Q") + " " + df['game_clock']).astype(str).tolist()
     else:
-        x_labels = df.index.astype(str)
+        x_labels = df.index.astype(str).tolist()
 
-    # --- Build WP Line Chart ---
+    # Build win probability line chart
     fig = px.line(
         df,
         x=x_labels,
         y='wp',
         title='Win Probability During Drive',
-        labels={'x': 'Game Time', 'wp': 'Win Probability'},
+        labels={'x': 'Game Time (Quarter + Clock)', 'wp': 'Win Probability'},
         markers=True
     )
 
