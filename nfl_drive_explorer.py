@@ -7,10 +7,10 @@ import plotly.express as px
 app = Dash(__name__)
 app.title = "NFL Drive Explorer"
 
-# Define available seasons (based on uploaded files)
+# Define available seasons
 AVAILABLE_SEASONS = list(range(1999, 2025))
 
-# Local cache so we only load each CSV once
+# Local cache
 season_cache = {}
 
 # Layout
@@ -52,7 +52,6 @@ app.layout = html.Div([
     dcc.Graph(id='wp-graph')
 ])
 
-# Callback: Populate games based on season/week
 @app.callback(
     Output('game-dropdown', 'options'),
     [Input('season-dropdown', 'value'),
@@ -86,7 +85,6 @@ def update_game_options(season, week):
 
     return [{'label': row['display'], 'value': row['game_id']} for _, row in games.iterrows()]
 
-# Callback: Populate drives for selected game
 @app.callback(
     Output('drive-dropdown', 'options'),
     [Input('game-dropdown', 'value'),
@@ -107,15 +105,15 @@ def update_drive_options(game_id, season, week):
             continue
 
         num_plays = len(drive_df)
-        epa_total = round(drive_df['epa'].sum(), 2)
-        wp_change = round(drive_df['wp'].iloc[-1] - drive_df['wp'].iloc[0], 4)
+        epa_total = round(drive_df['epa'].sum(), 4)
+        wpa_total = round(drive_df['wpa'].sum(), 4)
         total_yards = drive_df['yards_gained'].sum()
-        start_away_score = drive_df['total_away_score'].iloc[0]
-        start_home_score = drive_df['total_home_score'].iloc[0]
+        start_away_score = int(drive_df['total_away_score'].iloc[0])
+        start_home_score = int(drive_df['total_home_score'].iloc[0])
 
         label = (
             f"Drive {int(drive_num)} — Plays: {num_plays} | "
-            f"EPA: {epa_total} | ΔWP: {wp_change} | "
+            f"EPA: {epa_total} | WPA: {wpa_total} | "
             f"Yards: {total_yards} | Score: {start_away_score}-{start_home_score}"
         )
 
@@ -123,7 +121,6 @@ def update_drive_options(game_id, season, week):
 
     return drive_options
 
-# Callback: Show drive summary and WP chart
 @app.callback(
     [Output('drive-table', 'children'),
      Output('wp-graph', 'figure')],
@@ -147,26 +144,7 @@ def display_drive_data(game_id, drive, season, week):
 
     df_display = df[columns]
 
-    num_plays = len(df)
-    epa_total = round(df['epa'].sum(), 2)
-    wp_change = round(df['wp'].iloc[-1] - df['wp'].iloc[0], 4)
-    total_yards = df['yards_gained'].sum()
-    start_away_score = df['total_away_score'].iloc[0]
-    start_home_score = df['total_home_score'].iloc[0]
-
-    drive_summary = html.Div([
-        html.H4("Drive Summary"),
-        html.Ul([
-            html.Li(f"Total Plays: {num_plays}"),
-            html.Li(f"Total EPA: {epa_total}"),
-            html.Li(f"Change in Win Probability: {wp_change}"),
-            html.Li(f"Total Yards Gained: {total_yards}"),
-            html.Li(f"Start of Drive Score - Away: {start_away_score}, Home: {start_home_score}")
-        ])
-    ], style={'marginBottom': '20px'})
-
     table = html.Div([
-        drive_summary,
         html.Table([
             html.Thead(html.Tr([html.Th(col) for col in columns])),
             html.Tbody([
