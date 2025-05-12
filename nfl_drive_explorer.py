@@ -225,20 +225,20 @@ def update_suggested_drives(season, week):
 )
 def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, game_id):
     if season is None or week is None:
-        return html.Div("Select inputs."), px.line(title="Win Probability")
+        return html.Div("Select inputs."), html.Div()
 
     df = load_season_data(season)
     if df is None:
-        return html.Div("No data."), px.line(title="Win Probability")
+        return html.Div("No data."), html.Div()
 
     if view_mode == 'chronological':
         if chron_drive is None or game_id is None:
-            return html.Div("Select a drive."), px.line(title="Win Probability")
+            return html.Div("Select a drive."), html.Div()
         df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == chron_drive)]
     else:
         val = up_val or down_val
         if not val:
-            return html.Div("Select a suggested drive."), px.line(title="Win Probability")
+            return html.Div("Select a suggested drive."), html.Div()
         game_id, drive_num = val.split("|")
         df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == int(drive_num))]
 
