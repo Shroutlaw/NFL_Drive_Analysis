@@ -3,17 +3,15 @@ import pandas as pd
 from dash import Dash, html, dcc, Input, Output
 import plotly.express as px
 
-# Load pre-saved full dataset (created and updated manually)
-DATA_PATH = "data/nfl_play_by_play.csv"
-df_full = pd.read_excel(DATA_PATH)
-
-# Ensure types are correct
-df_full['season'] = pd.to_numeric(df_full['season'], errors='coerce').astype('Int64')
-df_full['week'] = pd.to_numeric(df_full['week'], errors='coerce').astype('Int64')
-
 # Initialize Dash app
 app = Dash(__name__)
 app.title = "NFL Drive Explorer"
+
+# Define available seasons (based on uploaded files)
+AVAILABLE_SEASONS = list(range(1999, 2025))
+
+# Local cache so we only load each CSV once
+season_cache = {}
 
 # Layout
 app.layout = html.Div([
@@ -21,7 +19,7 @@ app.layout = html.Div([
 
     html.Label("Select Season:"),
     dcc.Dropdown(
-        options=[{'label': str(s), 'value': s} for s in sorted(df_full['season'].dropna().unique())],
+        options=[{'label': str(s), 'value': s} for s in AVAILABLE_SEASONS],
         id='season-dropdown',
         placeholder="Choose a season..."
     ),
@@ -54,22 +52,33 @@ app.layout = html.Div([
     dcc.Graph(id='wp-graph')
 ])
 
-# Callback: Filter data for selected season
+# Callback: Populate games based on season/week
 @app.callback(
     Output('game-dropdown', 'options'),
     [Input('season-dropdown', 'value'),
      Input('week-dropdown', 'value')]
 )
-def update_games_dropdown(season, week):
+def update_game_options(season, week):
     if season is None or week is None:
         return []
 
-    df = df_full[(df_full['season'] == season) & (df_full['week'] == week)]
-    if df.empty:
+    if season not in season_cache:
+        path = f"seasons/nfl_{season}.csv"
+        if not os.path.exists(path):
+            return []
+        df = pd.read_csv(path)
+        df['season'] = pd.to_numeric(df['season'], errors='coerce').astype('Int64')
+        df['week'] = pd.to_numeric(df['week'], errors='coerce').astype('Int64')
+        season_cache[season] = df
+    else:
+        df = season_cache[season]
+
+    week_df = df[df['week'] == week]
+    if week_df.empty:
         return []
 
     games = (
-        df[['game_id', 'home_team', 'away_team']]
+        week_df[['game_id', 'home_team', 'away_team']]
         .drop_duplicates()
         .assign(display=lambda x: x.apply(
             lambda row: f"{row['away_team']} @ {row['home_team']} (Week {str(week).zfill(2)}, {season})", axis=1))
@@ -77,7 +86,7 @@ def update_games_dropdown(season, week):
 
     return [{'label': row['display'], 'value': row['game_id']} for _, row in games.iterrows()]
 
-# Callback: Drive dropdown
+# Callback: Populate drives for selected game
 @app.callback(
     Output('drive-dropdown', 'options'),
     [Input('game-dropdown', 'value'),
@@ -85,12 +94,13 @@ def update_games_dropdown(season, week):
      Input('week-dropdown', 'value')]
 )
 def update_drive_options(game_id, season, week):
-    if not game_id or season is None or week is None:
+    if not game_id or season is None or week is None or season not in season_cache:
         return []
 
-    df = df_full[(df_full['season'] == season) & (df_full['week'] == week) & (df_full['game_id'] == game_id)]
-    drive_options = []
+    df = season_cache[season]
+    df = df[(df['week'] == week) & (df['game_id'] == game_id)]
 
+    drive_options = []
     for drive_num in sorted(df['drive'].dropna().unique()):
         drive_df = df[df['drive'] == drive_num]
         if drive_df.empty:
@@ -113,7 +123,7 @@ def update_drive_options(game_id, season, week):
 
     return drive_options
 
-# Callback: Display drive info and graph
+# Callback: Show drive summary and WP chart
 @app.callback(
     [Output('drive-table', 'children'),
      Output('wp-graph', 'figure')],
@@ -123,10 +133,11 @@ def update_drive_options(game_id, season, week):
      Input('week-dropdown', 'value')]
 )
 def display_drive_data(game_id, drive, season, week):
-    if not game_id or drive is None or season is None or week is None:
+    if not game_id or drive is None or season is None or week is None or season not in season_cache:
         return html.Div("Please select a game and drive."), px.line(title="Win Probability (wp)")
 
-    df = df_full[(df_full['season'] == season) & (df_full['week'] == week) & (df_full['game_id'] == game_id) & (df_full['drive'] == drive)]
+    df = season_cache[season]
+    df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == drive)]
 
     columns = [
         'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'down',
@@ -176,7 +187,7 @@ def display_drive_data(game_id, drive, season, week):
 
     return table, fig
 
-# Required for Render
+# Run on Render-compatible port
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8050))
     app.run(host="0.0.0.0", port=port, debug=False)
