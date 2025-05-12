@@ -91,8 +91,17 @@ app.layout = html.Div([
 )
 def toggle_view_mode(view_mode):
     if view_mode == 'chronological':
-        return {'display': 'block'}, {'display': 'none'}, {'display': 'inline-block'}
-    return {'display': 'none'}, {'display': 'block'}, {'display': 'none'}
+        return (
+            {'display': 'block'},
+            {'display': 'none'},
+            {'display': 'inline-block', 'width': '40%', 'paddingRight': '10px'}
+        )
+    else:
+        return (
+            {'display': 'none'},
+            {'display': 'block'},
+            {'display': 'none'}
+        )
 
 @app.callback(
     Output('drive-dropdown', 'options'),
