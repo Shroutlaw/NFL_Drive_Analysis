@@ -43,7 +43,7 @@ app.layout = html.Div([
                 id='season-dropdown',
                 placeholder="Season"
             )
-        ], style={'width': '30%', 'display': 'inline-block', 'paddingRight': '10px'}),
+        ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
 
         html.Div([
             html.Label("Week:"),
@@ -52,7 +52,7 @@ app.layout = html.Div([
                 options=[{'label': f"Week {w}", 'value': w} for w in range(1, 19)],
                 placeholder="Week"
             )
-        ], style={'width': '30%', 'display': 'inline-block', 'paddingRight': '10px'}),
+        ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
 
         html.Div([
             html.Label("Game:"),
