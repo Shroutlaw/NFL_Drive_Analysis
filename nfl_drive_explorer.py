@@ -106,15 +106,21 @@ def update_drive_options(game_id, season, week):
 
         num_plays = len(drive_df)
         epa_total = round(drive_df['epa'].sum(), 4)
-        wpa_total = round(drive_df['wpa'].sum(), 4)
+        wpa_total = round(drive_df['wpa'].sum(), 4) if 'wpa' in drive_df else 0.0
         total_yards = drive_df['yards_gained'].sum()
         start_away_score = int(drive_df['total_away_score'].iloc[0])
         start_home_score = int(drive_df['total_home_score'].iloc[0])
+        posteam = drive_df['posteam'].iloc[0]
+        defteam = drive_df['defteam'].iloc[0]
 
         label = (
-            f"Drive {int(drive_num)} — Plays: {num_plays} | "
-            f"EPA: {epa_total} | WPA: {wpa_total} | "
-            f"Yards: {total_yards} | Score: {start_away_score}-{start_home_score}"
+            f"Drive {str(int(drive_num)).ljust(3)} | "
+            f"Plays: {str(num_plays).ljust(3)} | "
+            f"EPA: {str(epa_total).ljust(8)} | "
+            f"WPA: {str(wpa_total).ljust(8)} | "
+            f"Yds: {str(total_yards).ljust(4)} | "
+            f"Score: AWY {start_away_score} - {start_home_score} HOM | "
+            f"O: {posteam} vs D: {defteam}"
         )
 
         drive_options.append({'label': label, 'value': int(drive_num)})
