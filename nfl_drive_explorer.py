@@ -17,38 +17,41 @@ season_cache = {}
 app.layout = html.Div([
     html.H1("NFL Drive Explorer"),
 
-    html.Label("Select Season:"),
-    dcc.Dropdown(
-        options=[{'label': str(s), 'value': s} for s in AVAILABLE_SEASONS],
-        id='season-dropdown',
-        placeholder="Choose a season..."
-    ),
+    # Row with Season, Week, Game dropdowns
+    html.Div([
+        html.Div([
+            html.Label("Season:"),
+            dcc.Dropdown(
+                options=[{'label': str(s), 'value': s} for s in AVAILABLE_SEASONS],
+                id='season-dropdown',
+                placeholder="Season"
+            )
+        ], style={'width': '30%', 'display': 'inline-block', 'paddingRight': '10px'}),
 
-    html.Br(),
+        html.Div([
+            html.Label("Week:"),
+            dcc.Dropdown(
+                id='week-dropdown',
+                options=[{'label': f"Week {w}", 'value': w} for w in range(1, 19)],
+                placeholder="Week"
+            )
+        ], style={'width': '30%', 'display': 'inline-block', 'paddingRight': '10px'}),
 
-    html.Label("Select Week:"),
-    dcc.Dropdown(
-        id='week-dropdown',
-        options=[{'label': f"Week {w}", 'value': w} for w in range(1, 19)],
-        placeholder="Choose a week..."
-    ),
+        html.Div([
+            html.Label("Game:"),
+            dcc.Dropdown(id='game-dropdown', placeholder="Game")
+        ], style={'width': '40%', 'display': 'inline-block'}),
+    ], style={'marginBottom': '20px'}),
 
-    html.Br(),
+    # Drive dropdown on its own line
+    html.Div([
+        html.Label("Drive:"),
+        dcc.Dropdown(id='drive-dropdown', placeholder="Choose a drive...")
+    ], style={'marginBottom': '20px'}),
 
-    html.Label("Select Game:"),
-    dcc.Dropdown(id='game-dropdown', placeholder="Choose a game..."),
-
-    html.Br(),
-
-    html.Label("Select Drive:"),
-    dcc.Dropdown(id='drive-dropdown', placeholder="Choose a drive..."),
-
-    html.Br(),
-
+    # Drive table + win probability graph
     html.Div(id='drive-table'),
-
     html.Br(),
-
     dcc.Graph(id='wp-graph')
 ])
 
