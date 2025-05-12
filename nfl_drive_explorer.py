@@ -22,6 +22,7 @@ def load_season_data(season):
 app.layout = html.Div([
     html.H1("NFL Drive Explorer"),
 
+    # View toggle
     html.Div([
         html.Label("View Mode:"),
         dcc.RadioItems(
@@ -35,6 +36,7 @@ app.layout = html.Div([
         )
     ], style={'marginBottom': '20px'}),
 
+    # Season, Week, Game row
     html.Div([
         html.Div([
             html.Label("Season:"),
@@ -57,14 +59,16 @@ app.layout = html.Div([
         html.Div([
             html.Label("Game:"),
             dcc.Dropdown(id='game-dropdown', placeholder="Game")
-        ], id='game-dropdown-container', style={'width': '40%', 'display': 'inline-block'}),
+        ], id='game-dropdown-container', style={'width': '40%', 'display': 'inline-block', 'paddingRight': '10px'}),
     ], style={'marginBottom': '20px'}),
 
+    # Chronological view dropdown
     html.Div([
         html.Label("Drive (Chronological):"),
         dcc.Dropdown(id='drive-dropdown', placeholder="Choose a drive...")
-    ], id='chronological-container', style={'display': 'none', 'marginBottom': '20px'}),
+    ], id='chronological-container', style={'marginBottom': '20px'}),
 
+    # Suggested view dropdowns
     html.Div([
         html.H3("Turning the Tides"),
 
@@ -76,7 +80,7 @@ app.layout = html.Div([
         html.Label("Expected Win ➜ Expected Loss:"),
         dcc.Dropdown(id='suggested-down-dropdown', placeholder="Choose a collapse drive..."),
 
-    ], id='suggested-container', style={'display': 'block', 'marginBottom': '20px'}),
+    ], id='suggested-container', style={'marginBottom': '20px'}),
 
     html.Div(id='drive-table'),
     html.Br(),
