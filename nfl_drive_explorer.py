@@ -16,6 +16,7 @@ def load_season_data(season):
             df = pd.read_csv(path)
             df['season'] = pd.to_numeric(df['season'], errors='coerce').astype('Int64')
             df['week'] = pd.to_numeric(df['week'], errors='coerce').astype('Int64')
+            df['drive'] = pd.to_numeric(df['drive'], errors='coerce').astype('Int64')  # <-- ADD THIS
             season_cache[season] = df
     return season_cache.get(season)
 
