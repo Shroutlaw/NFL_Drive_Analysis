@@ -14,9 +14,9 @@ def load_season_data(season):
         path = f"seasons/nfl_{season}.csv"
         if os.path.exists(path):
             df = pd.read_csv(path)
+            df['drive'] = pd.to_numeric(df['drive'], errors='coerce').astype('Int64')
             df['season'] = pd.to_numeric(df['season'], errors='coerce').astype('Int64')
             df['week'] = pd.to_numeric(df['week'], errors='coerce').astype('Int64')
-            df['drive'] = pd.to_numeric(df['drive'], errors='coerce').astype('Int64')  # <-- ADD THIS
             season_cache[season] = df
     return season_cache.get(season)
 
@@ -287,6 +287,9 @@ def display_drive_data(chron_drive, up_val, down_val, scope, season, week, view_
     if drive_df.empty:
         return html.Div("No data found for selected drive."), html.Div()
 
+        if drive_df.empty:
+        return html.Div("No data found for selected drive."), html.Div()
+
     # ---------- Build Table ----------
     columns = [
         'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'time', 'down',
@@ -317,7 +320,10 @@ def display_drive_data(chron_drive, up_val, down_val, scope, season, week, view_
 
     # ---------- Win Probability Graph ----------
     if 'qtr' in drive_df.columns and 'time' in drive_df.columns:
+        if 'qtr' in drive_df.columns and 'time' in drive_df.columns:
         x_labels = (drive_df['qtr'].astype(str).radd("Q") + " " + drive_df['time']).astype(str).tolist()
+    else:
+        x_labels = drive_df.index.astype(str).tolist()
     else:
         x_labels = drive_df.index.astype(str).tolist()
 
