@@ -20,72 +20,92 @@ def load_season_data(season):
     return season_cache.get(season)
 
 app.layout = html.Div([
-    html.H1("NFL Drive Explorer"),
+    html.H1("NFL Drive Explorer", style={'textAlign': 'center'}),
 
-    # View toggle
-    html.Div([
-        html.Label("View Mode:"),
-        dcc.RadioItems(
-            id='view-mode',
-            options=[
-                {'label': 'Suggested', 'value': 'suggested'},
-                {'label': 'Chronological', 'value': 'chronological'}
-            ],
-            value='suggested',
-            labelStyle={'display': 'inline-block', 'marginRight': '15px'}
-        )
-    ], style={'marginBottom': '20px'}),
-
-    # Season, Week, Game row
+    # Top container: mode toggle and dropdowns
     html.Div([
         html.Div([
-            html.Label("Season:"),
-            dcc.Dropdown(
-                options=[{'label': str(s), 'value': s} for s in AVAILABLE_SEASONS],
-                id='season-dropdown',
-                placeholder="Season"
+            html.Label("View Mode:"),
+            dcc.RadioItems(
+                id='view-mode',
+                options=[
+                    {'label': 'Suggested', 'value': 'suggested'},
+                    {'label': 'Chronological', 'value': 'chronological'}
+                ],
+                value='suggested',
+                labelStyle={'display': 'inline-block', 'marginRight': '15px'}
             )
-        ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
+        ], style={'marginBottom': '10px'}),
 
         html.Div([
-            html.Label("Week:"),
-            dcc.Dropdown(
-                id='week-dropdown',
-                options=[{'label': f"Week {w}", 'value': w} for w in range(1, 19)],
-                placeholder="Week"
-            )
-        ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
+            html.Div([
+                html.Label("Season:"),
+                dcc.Dropdown(
+                    options=[{'label': str(s), 'value': s} for s in AVAILABLE_SEASONS],
+                    id='season-dropdown',
+                    placeholder="Season"
+                )
+            ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
 
+            html.Div([
+                html.Label("Week:"),
+                dcc.Dropdown(
+                    id='week-dropdown',
+                    options=[{'label': f"Week {w}", 'value': w} for w in range(1, 19)],
+                    placeholder="Week"
+                )
+            ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
+
+            html.Div([
+                html.Label("Game:"),
+                dcc.Dropdown(id='game-dropdown', placeholder="Game")
+            ], id='game-dropdown-container', style={'width': '40%', 'display': 'inline-block', 'paddingRight': '10px'}),
+        ]),
+    ], style={
+        'backgroundColor': 'white',
+        'padding': '15px',
+        'borderRadius': '8px',
+        'marginBottom': '20px',
+        'boxShadow': '0 0 8px rgba(0,0,0,0.1)'
+    }),
+
+    # Drive selection (Chron or Suggested)
+    html.Div([
         html.Div([
-            html.Label("Game:"),
-            dcc.Dropdown(id='game-dropdown', placeholder="Game")
-        ], id='game-dropdown-container', style={'width': '40%', 'display': 'inline-block', 'paddingRight': '10px'}),
-    ], style={'marginBottom': '20px'}),
+            html.Label("Drive (Chronological):"),
+            dcc.Dropdown(id='drive-dropdown', placeholder="Choose a drive...")
+        ], id='chronological-container'),
+        html.Div([
+            html.H3("Turning the Tides"),
 
-    # Chronological view dropdown
-    html.Div([
-        html.Label("Drive (Chronological):"),
-        dcc.Dropdown(id='drive-dropdown', placeholder="Choose a drive...")
-    ], id='chronological-container', style={'marginBottom': '20px'}),
+            html.Label("Expected Loss ➜ Expected Win:"),
+            dcc.Dropdown(id='suggested-up-dropdown', placeholder="Choose a swing drive..."),
 
-    # Suggested view dropdowns
-    html.Div([
-        html.H3("Turning the Tides"),
+            html.Br(),
 
-        html.Label("Expected Loss ➜ Expected Win:"),
-        dcc.Dropdown(id='suggested-up-dropdown', placeholder="Choose a swing drive..."),
+            html.Label("Expected Win ➜ Expected Loss:"),
+            dcc.Dropdown(id='suggested-down-dropdown', placeholder="Choose a collapse drive..."),
+        ], id='suggested-container')
+    ], style={
+        'backgroundColor': 'white',
+        'padding': '15px',
+        'borderRadius': '8px',
+        'marginBottom': '20px',
+        'boxShadow': '0 0 8px rgba(0,0,0,0.1)'
+    }),
 
-        html.Br(),
+    # Table of plays
+    html.Div(id='drive-table', style={
+        'backgroundColor': 'white',
+        'padding': '15px',
+        'borderRadius': '8px',
+        'marginBottom': '20px',
+        'boxShadow': '0 0 8px rgba(0,0,0,0.1)'
+    }),
 
-        html.Label("Expected Win ➜ Expected Loss:"),
-        dcc.Dropdown(id='suggested-down-dropdown', placeholder="Choose a collapse drive..."),
-
-    ], id='suggested-container', style={'marginBottom': '20px'}),
-
-    html.Div(id='drive-table'),
-    html.Br(),
+    # Graphs
     html.Div(id='wp-graph')
-])
+], style={'backgroundColor': '#f4f4f4', 'padding': '30px'})
 
 @app.callback(
     [Output('chronological-container', 'style'),
@@ -242,7 +262,7 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
         game_id, drive_num = val.split("|")
         df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == int(drive_num))]
 
-    # Display table
+    # ----------- TABLE OF PLAYS -----------
     columns = [
         'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'down',
         'ydstogo', 'yards_gained', 'play_type', 'epa', 'wp',
@@ -252,27 +272,30 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
 
     table = html.Div([
         html.Table([
-            html.Thead(html.Tr([html.Th(col) for col in columns])),
+            html.Thead(html.Tr([
+                html.Th(col, style={'border': '1px solid #ddd', 'padding': '8px', 'backgroundColor': '#f0f0f0'})
+                for col in columns
+            ])),
             html.Tbody([
-                html.Tr([html.Td(df_display.iloc[i][col]) for col in columns])
+                html.Tr([
+                    html.Td(df_display.iloc[i][col], style={'border': '1px solid #ddd', 'padding': '8px'})
+                    for col in columns
+                ], style={'backgroundColor': '#f9f9f9' if i % 2 == 0 else 'white'})
                 for i in range(len(df_display))
             ])
         ], style={
-            'overflowX': 'scroll',
-            'display': 'block',
-            'maxHeight': '600px',
-            'overflowY': 'scroll',
-            'border': '1px solid black'
+            'width': '100%',
+            'borderCollapse': 'collapse',
+            'fontSize': '14px'
         })
     ])
 
-    # Create x-axis for win probability graph
+    # ----------- WIN PROBABILITY CHART -----------
     if 'qtr' in df.columns and 'game_clock' in df.columns:
         x_labels = (df['qtr'].astype(str).radd("Q") + " " + df['game_clock']).astype(str).tolist()
     else:
         x_labels = df.index.astype(str).tolist()
 
-    # WP Line Chart
     wp_fig = px.line(
         df,
         x=x_labels,
@@ -299,7 +322,7 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
         height=400
     )
 
-    # Run vs Pass Chart
+    # ----------- RUN VS PASS CHART -----------
     play_mix_df = df[df['play_type'].isin(['run', 'pass'])]
     play_counts = play_mix_df['play_type'].value_counts().reset_index()
     play_counts.columns = ['play_type', 'count']
@@ -321,7 +344,7 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
         height=400
     )
 
-    # Combine graphs side-by-side
+    # ----------- COMBINE CHARTS SIDE BY SIDE -----------
     charts = html.Div([
         html.Div(dcc.Graph(figure=wp_fig), style={'width': '60%', 'display': 'inline-block', 'verticalAlign': 'top'}),
         html.Div(dcc.Graph(figure=mix_fig), style={'width': '38%', 'display': 'inline-block', 'paddingLeft': '2%'})
