@@ -14,18 +14,17 @@ def load_season_data(season):
         path = f"seasons/nfl_{season}.csv"
         if os.path.exists(path):
             df = pd.read_csv(path)
-            df['drive'] = pd.to_numeric(df['drive'], errors='coerce').astype('Int64')
             df['season'] = pd.to_numeric(df['season'], errors='coerce').astype('Int64')
             df['week'] = pd.to_numeric(df['week'], errors='coerce').astype('Int64')
             season_cache[season] = df
     return season_cache.get(season)
 
 app.layout = html.Div([
-    html.H1("NFL Drive Explorer", style={'textAlign': 'center'}),
+    html.H1("NFL Drive Explorer"),
 
-    # View mode toggle + season/week/game selectors
+    # View toggle
     html.Div([
-        html.Label("View Mode:", style={'fontWeight': 'bold'}),
+        html.Label("View Mode:"),
         dcc.RadioItems(
             id='view-mode',
             options=[
@@ -34,99 +33,59 @@ app.layout = html.Div([
             ],
             value='suggested',
             labelStyle={'display': 'inline-block', 'marginRight': '15px'}
-        ),
+        )
+    ], style={'marginBottom': '20px'}),
+
+    # Season, Week, Game row
+    html.Div([
+        html.Div([
+            html.Label("Season:"),
+            dcc.Dropdown(
+                options=[{'label': str(s), 'value': s} for s in AVAILABLE_SEASONS],
+                id='season-dropdown',
+                placeholder="Season"
+            )
+        ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
+
+        html.Div([
+            html.Label("Week:"),
+            dcc.Dropdown(
+                id='week-dropdown',
+                options=[{'label': f"Week {w}", 'value': w} for w in range(1, 19)],
+                placeholder="Week"
+            )
+        ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
+
+        html.Div([
+            html.Label("Game:"),
+            dcc.Dropdown(id='game-dropdown', placeholder="Game")
+        ], id='game-dropdown-container', style={'width': '40%', 'display': 'inline-block', 'paddingRight': '10px'}),
+    ], style={'marginBottom': '20px'}),
+
+    # Chronological view dropdown
+    html.Div([
+        html.Label("Drive (Chronological):"),
+        dcc.Dropdown(id='drive-dropdown', placeholder="Choose a drive...")
+    ], id='chronological-container', style={'marginBottom': '20px'}),
+
+    # Suggested view dropdowns
+    html.Div([
+        html.H3("Turning the Tides"),
+
+        html.Label("Expected Loss ➜ Expected Win:"),
+        dcc.Dropdown(id='suggested-up-dropdown', placeholder="Choose a swing drive..."),
+
         html.Br(),
 
-        html.Div([
-            html.Div([
-                html.Label("Season:"),
-                dcc.Dropdown(
-                    id='season-dropdown',
-                    options=[{'label': str(s), 'value': s} for s in AVAILABLE_SEASONS],
-                    placeholder="Select Season"
-                )
-            ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
+        html.Label("Expected Win ➜ Expected Loss:"),
+        dcc.Dropdown(id='suggested-down-dropdown', placeholder="Choose a collapse drive..."),
 
-            html.Div([
-                html.Label("Week:"),
-                dcc.Dropdown(
-                    id='week-dropdown',
-                    options=[{'label': f"Week {w}", 'value': w} for w in range(1, 19)],
-                    placeholder="Select Week"
-                )
-            ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
+    ], id='suggested-container', style={'marginBottom': '20px'}),
 
-            html.Div([
-                html.Label("Game:"),
-                dcc.Dropdown(id='game-dropdown', placeholder="Select Game")
-            ], id='game-dropdown-container', style={'width': '40%', 'display': 'inline-block'}),
-        ])
-    ], style={
-        'backgroundColor': 'white',
-        'padding': '15px',
-        'borderRadius': '8px',
-        'marginBottom': '20px',
-        'boxShadow': '0 0 8px rgba(0,0,0,0.1)'
-    }),
-
-    # Comparison scope dropdown
-    html.Div([
-        html.Label("Compare Against:", style={'fontWeight': 'bold'}),
-        dcc.Dropdown(
-            id='comparison-scope',
-            options=[
-                {'label': 'This Game', 'value': 'game'},
-                {'label': 'This Week', 'value': 'week'},
-                {'label': 'This Season', 'value': 'season'},
-                {'label': 'All Drives', 'value': 'all'}
-            ],
-            value='game',
-            style={'width': '300px'}
-        )
-    ], style={
-        'backgroundColor': 'white',
-        'padding': '15px',
-        'borderRadius': '8px',
-        'marginBottom': '20px',
-        'boxShadow': '0 0 8px rgba(0,0,0,0.1)'
-    }),
-
-    # Drive selector (chronological or suggested)
-    html.Div([
-        html.Div([
-            html.Label("Drive (Chronological):"),
-            dcc.Dropdown(id='drive-dropdown', placeholder="Choose a drive...")
-        ], id='chronological-container'),
-
-        html.Div([
-            html.H3("Turning the Tides"),
-            html.Label("Expected Loss ➜ Expected Win:"),
-            dcc.Dropdown(id='suggested-up-dropdown', placeholder="Choose a swing drive..."),
-            html.Br(),
-            html.Label("Expected Win ➜ Expected Loss:"),
-            dcc.Dropdown(id='suggested-down-dropdown', placeholder="Choose a collapse drive...")
-        ], id='suggested-container')
-    ], style={
-        'backgroundColor': 'white',
-        'padding': '15px',
-        'borderRadius': '8px',
-        'marginBottom': '20px',
-        'boxShadow': '0 0 8px rgba(0,0,0,0.1)'
-    }),
-
-    # Drive table (list of plays)
-    html.Div(id='drive-table', style={
-        'backgroundColor': 'white',
-        'padding': '15px',
-        'borderRadius': '8px',
-        'marginBottom': '20px',
-        'boxShadow': '0 0 8px rgba(0,0,0,0.1)'
-    }),
-
-    # Graphs section
-    html.Div(id='wp-graph'),
-
-], style={'backgroundColor': '#f4f4f4', 'padding': '30px'})
+    html.Div(id='drive-table'),
+    html.Br(),
+    html.Div(id='wp-graph')
+])
 
 @app.callback(
     [Output('chronological-container', 'style'),
@@ -141,11 +100,12 @@ def toggle_view_mode(view_mode):
             {'display': 'none'},
             {'display': 'inline-block', 'width': '40%', 'paddingRight': '10px'}
         )
-    return (
-        {'display': 'none'},
-        {'display': 'block'},
-        {'display': 'none'}
-    )
+    else:
+        return (
+            {'display': 'none'},
+            {'display': 'block'},
+            {'display': 'none'}
+        )
 
 @app.callback(
     Output('drive-dropdown', 'options'),
@@ -257,170 +217,114 @@ def update_suggested_drives(season, week):
      Output('wp-graph', 'children')],
     [Input('drive-dropdown', 'value'),
      Input('suggested-up-dropdown', 'value'),
-     Input('suggested-down-dropdown', 'value'),
-     Input('comparison-scope', 'value')],
+     Input('suggested-down-dropdown', 'value')],
     [State('season-dropdown', 'value'),
      State('week-dropdown', 'value'),
      State('view-mode', 'value'),
      State('game-dropdown', 'value')]
 )
-def display_drive_data(chron_drive, up_val, down_val, scope, season, week, view_mode, game_id):
-    if not season or not week:
-        return html.Div("Select a season and week."), html.Div()
+def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, game_id):
+    if season is None or week is None:
+        return html.Div("Select inputs."), px.line(title="Win Probability")
 
     df = load_season_data(season)
-    if df is None or df.empty:
-        return html.Div("No data available."), html.Div()
+    if df is None:
+        return html.Div("No data."), px.line(title="Win Probability")
 
-    # Determine selected drive and game
     if view_mode == 'chronological':
-        if not game_id or chron_drive is None:
-            return html.Div("Select a drive."), html.Div()
-        drive_df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == int(chron_drive))]
+        if chron_drive is None or game_id is None:
+            return html.Div("Select a drive."), px.line(title="Win Probability")
+        df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == chron_drive)]
     else:
-        selected_val = up_val or down_val
-        if not selected_val or '|' not in selected_val:
-            return html.Div("Select a suggested drive."), html.Div()
-        game_id, drive_num = selected_val.split("|")
-        drive_df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == int(drive_num))]
+        val = up_val or down_val
+        if not val:
+            return html.Div("Select a suggested drive."), px.line(title="Win Probability")
+        game_id, drive_num = val.split("|")
+        df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == int(drive_num))]
 
-    if drive_df.empty:
-        return html.Div("No data found for selected drive."), html.Div()
-
-    # ---------- Build Table ----------
+    # Display table
     columns = [
-        'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'time', 'down',
+        'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'down',
         'ydstogo', 'yards_gained', 'play_type', 'epa', 'wp',
         'desc', 'total_away_score', 'total_home_score'
     ]
-    df_display = drive_df[columns]
+    df_display = df[columns]
 
     table = html.Div([
         html.Table([
-            html.Thead(html.Tr([
-                html.Th(col, style={'border': '1px solid #ddd', 'padding': '8px', 'backgroundColor': '#f0f0f0'})
-                for col in columns
-            ])),
+            html.Thead(html.Tr([html.Th(col) for col in columns])),
             html.Tbody([
-                html.Tr([
-                    html.Td(df_display.iloc[i][col], style={'border': '1px solid #ddd', 'padding': '8px'})
-                    for col in columns
-                ], style={'backgroundColor': '#f9f9f9' if i % 2 == 0 else 'white'})
+                html.Tr([html.Td(df_display.iloc[i][col]) for col in columns])
                 for i in range(len(df_display))
             ])
         ], style={
-            'width': '100%',
-            'borderCollapse': 'collapse',
-            'fontSize': '14px'
+            'overflowX': 'scroll',
+            'display': 'block',
+            'maxHeight': '600px',
+            'overflowY': 'scroll',
+            'border': '1px solid black'
         })
     ])
 
-    # ---------- Win Probability Graph ----------
-    if 'qtr' in drive_df.columns and 'time' in drive_df.columns:
-        x_labels = (drive_df['qtr'].astype(str).radd("Q") + " " + drive_df['time']).astype(str).tolist()
+    # Create x-axis for win probability graph
+    if 'qtr' in df.columns and 'game_clock' in df.columns:
+        x_labels = (df['qtr'].astype(str).radd("Q") + " " + df['game_clock']).astype(str).tolist()
     else:
-        x_labels = drive_df.index.astype(str).tolist()
+        x_labels = df.index.astype(str).tolist()
 
+    # WP Line Chart
     wp_fig = px.line(
-        drive_df, x=x_labels, y='wp', title='Win Probability During Drive',
-        labels={'x': 'Game Time', 'wp': 'Win Probability'}, markers=True
+        df,
+        x=x_labels,
+        y='wp',
+        title='Win Probability During Drive',
+        labels={'x': 'Game Time (Quarter + Clock)', 'wp': 'Win Probability'},
+        markers=True
     )
-    wp_fig.update_traces(line=dict(width=3, color='#1f77b4'), marker=dict(size=6))
-    wp_fig.update_layout(height=400, yaxis=dict(range=[0, 1]), template='plotly_white')
 
-    # ---------- Run vs Pass Mix ----------
-    play_mix = drive_df[drive_df['play_type'].isin(['run', 'pass'])]
-    play_counts = play_mix['play_type'].value_counts().reset_index()
+    wp_fig.update_traces(
+        line=dict(width=3, color='#1f77b4'),
+        marker=dict(size=6),
+        hovertemplate="<b>Time:</b> %{x}<br><b>WP:</b> %{y:.3f}<extra></extra>"
+    )
+
+    wp_fig.update_layout(
+        title_font_size=22,
+        xaxis_title="Game Time (Quarter + Clock)",
+        yaxis_title="Win Probability",
+        yaxis=dict(range=[0, 1]),
+        template='plotly_white',
+        hovermode='x unified',
+        margin=dict(l=40, r=30, t=50, b=40),
+        height=400
+    )
+
+    # Run vs Pass Chart
+    play_mix_df = df[df['play_type'].isin(['run', 'pass'])]
+    play_counts = play_mix_df['play_type'].value_counts().reset_index()
     play_counts.columns = ['play_type', 'count']
-    mix_fig = px.bar(play_counts, x='count', y='play_type', orientation='h', title='Run vs Pass Mix',
-                     color='play_type', color_discrete_map={'run': '#2ca02c', 'pass': '#1f77b4'})
-    mix_fig.update_layout(height=400)
 
-    # ---------- Drive Summary Helper ----------
-    def build_summary(df):
-        plays = len(df)
-        epa = df['epa'].sum()
-        wpa = df['wpa'].sum()
-        yds = df['yards_gained'].sum()
-        run_plays = df[df['play_type'] == 'run'].shape[0]
-        pass_plays = df[df['play_type'] == 'pass'].shape[0]
-        total = run_plays + pass_plays
-        return {
-            'plays': plays,
-            'epa': epa,
-            'wpa': wpa,
-            'yards': yds,
-            'run_pct': run_plays / total if total else 0,
-            'pass_pct': pass_plays / total if total else 0
-        }
-
-    def normalize(val, median):
-        return val / median if median else 0
-
-    # ---------- Comparison Group ----------
-    if scope == 'game':
-        comp_df = df[df['game_id'] == game_id]
-    elif scope == 'week':
-        comp_df = df[df['week'] == week]
-    elif scope == 'season':
-        comp_df = df
-    else:
-        comp_df = pd.concat(season_cache.values())
-
-    summary_rows = []
-    for _, g in comp_df.dropna(subset=['drive']).groupby(['game_id', 'drive']):
-        summary_rows.append(build_summary(g))
-    summary_df = pd.DataFrame(summary_rows)
-    median_summary = summary_df.median()
-
-    this_drive = build_summary(drive_df)
-
-    # ---------- Radar Chart ----------
-    radar_fig = go.Figure()
-    radar_fig.add_trace(go.Scatterpolar(
-        r=[
-            normalize(this_drive['plays'], median_summary['plays']),
-            normalize(this_drive['epa'], median_summary['epa']),
-            normalize(this_drive['wpa'], median_summary['wpa']),
-            normalize(this_drive['yards'], median_summary['yards']),
-            normalize(this_drive['run_pct'], median_summary['run_pct']),
-            normalize(this_drive['pass_pct'], median_summary['pass_pct']),
-        ],
-        theta=['# Plays', 'EPA', 'WPA', 'Yards', 'Run %', 'Pass %'],
-        fill='toself', name='Selected Drive'
-    ))
-    radar_fig.add_trace(go.Scatterpolar(
-        r=[1, 1, 1, 1, 1, 1],
-        theta=['# Plays', 'EPA', 'WPA', 'Yards', 'Run %', 'Pass %'],
-        fill='toself', name='Median Drive'
-    ))
-    radar_fig.update_layout(height=400, title='Drive Fingerprint vs Median',
-                            polar=dict(radialaxis=dict(visible=True, range=[0, 2])))
-
-    # ---------- EPA vs WPA Bubble Chart ----------
-    bubble_data = summary_df.copy()
-    bubble_data['size'] = bubble_data['yards']
-    bubble_fig = px.scatter(
-        bubble_data, x='epa', y='wpa', size='size',
-        title='EPA vs WPA by Drive',
-        labels={'epa': 'Expected Points Added', 'wpa': 'Win Probability Added'},
-        opacity=0.6
+    mix_fig = px.bar(
+        play_counts,
+        x='count',
+        y='play_type',
+        orientation='h',
+        title='Run vs Pass Mix',
+        labels={'count': 'Play Count', 'play_type': 'Play Type'},
+        color='play_type',
+        color_discrete_map={'run': '#2ca02c', 'pass': '#1f77b4'}
     )
-    bubble_fig.add_trace(go.Scatter(
-        x=[this_drive['epa']], y=[this_drive['wpa']],
-        mode='markers+text',
-        marker=dict(size=14, color='red'),
-        name='Selected Drive',
-        text=["This Drive"], textposition='top center'
-    ))
-    bubble_fig.update_layout(height=400)
 
-    # ---------- Layout Output ----------
+    mix_fig.update_layout(
+        title_font_size=20,
+        margin=dict(l=20, r=20, t=50, b=20),
+        height=400
+    )
+
+    # Combine graphs side-by-side
     charts = html.Div([
-        html.Div(dcc.Graph(figure=wp_fig), style={'width': '49%', 'display': 'inline-block'}),
-        html.Div(dcc.Graph(figure=mix_fig), style={'width': '49%', 'display': 'inline-block'}),
-        html.Div(dcc.Graph(figure=radar_fig), style={'width': '49%', 'display': 'inline-block'}),
-        html.Div(dcc.Graph(figure=bubble_fig), style={'width': '49%', 'display': 'inline-block'})
+        html.Div(dcc.Graph(figure=wp_fig), style={'width': '60%', 'display': 'inline-block', 'verticalAlign': 'top'}),
+        html.Div(dcc.Graph(figure=mix_fig), style={'width': '38%', 'display': 'inline-block', 'paddingLeft': '2%'})
     ])
 
     return table, charts
