@@ -285,7 +285,7 @@ def display_drive_data(chron_drive, up_val, down_val, scope, season, week, view_
 
     # ---------- Build Table ----------
     columns = [
-        'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'down',
+        'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'time', 'down',
         'ydstogo', 'yards_gained', 'play_type', 'epa', 'wp',
         'desc', 'total_away_score', 'total_home_score'
     ]
@@ -312,7 +312,11 @@ def display_drive_data(chron_drive, up_val, down_val, scope, season, week, view_
     ])
 
     # ---------- Win Probability Graph ----------
-    x_labels = (drive_df['qtr'].astype(str).radd("Q") + " " + drive_df['game_clock']).astype(str).tolist()
+    if 'qtr' in drive_df.columns and 'time' in drive_df.columns:
+        x_labels = (drive_df['qtr'].astype(str).radd("Q") + " " + drive_df['time']).astype(str).tolist()
+    else:
+        x_labels = drive_df.index.astype(str).tolist()
+
     wp_fig = px.line(
         drive_df, x=x_labels, y='wp', title='Win Probability During Drive',
         labels={'x': 'Game Time', 'wp': 'Win Probability'}, markers=True
