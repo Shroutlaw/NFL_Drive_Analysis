@@ -244,7 +244,7 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
 
     # Display table
     columns = [
-        'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'down',
+        'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'time', 'down',
         'ydstogo', 'yards_gained', 'play_type', 'epa', 'wp',
         'desc', 'total_away_score', 'total_home_score'
     ]
