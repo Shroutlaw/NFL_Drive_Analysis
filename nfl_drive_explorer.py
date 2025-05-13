@@ -287,9 +287,6 @@ def display_drive_data(chron_drive, up_val, down_val, scope, season, week, view_
     if drive_df.empty:
         return html.Div("No data found for selected drive."), html.Div()
 
-        if drive_df.empty:
-        return html.Div("No data found for selected drive."), html.Div()
-
     # ---------- Build Table ----------
     columns = [
         'posteam', 'defteam', 'yardline_100', 'drive', 'qtr', 'time', 'down',
