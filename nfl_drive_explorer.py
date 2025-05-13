@@ -275,13 +275,16 @@ def display_drive_data(chron_drive, up_val, down_val, scope, season, week, view_
     if view_mode == 'chronological':
         if not game_id or chron_drive is None:
             return html.Div("Select a drive."), html.Div()
-        drive_df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == chron_drive)]
+        drive_df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == int(chron_drive))]
     else:
         selected_val = up_val or down_val
         if not selected_val or '|' not in selected_val:
             return html.Div("Select a suggested drive."), html.Div()
         game_id, drive_num = selected_val.split("|")
         drive_df = df[(df['week'] == week) & (df['game_id'] == game_id) & (df['drive'] == int(drive_num))]
+
+    if drive_df.empty:
+        return html.Div("No data found for selected drive."), html.Div()
 
     # ---------- Build Table ----------
     columns = [
@@ -313,7 +316,10 @@ def display_drive_data(chron_drive, up_val, down_val, scope, season, week, view_
 
     # ---------- Win Probability Graph ----------
     if 'qtr' in drive_df.columns and 'time' in drive_df.columns:
+        if 'qtr' in drive_df.columns and 'time' in drive_df.columns:
         x_labels = (drive_df['qtr'].astype(str).radd("Q") + " " + drive_df['time']).astype(str).tolist()
+    else:
+        x_labels = drive_df.index.astype(str).tolist()
     else:
         x_labels = drive_df.index.astype(str).tolist()
 
