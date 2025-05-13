@@ -316,10 +316,7 @@ def display_drive_data(chron_drive, up_val, down_val, scope, season, week, view_
 
     # ---------- Win Probability Graph ----------
     if 'qtr' in drive_df.columns and 'time' in drive_df.columns:
-        if 'qtr' in drive_df.columns and 'time' in drive_df.columns:
         x_labels = (drive_df['qtr'].astype(str).radd("Q") + " " + drive_df['time']).astype(str).tolist()
-    else:
-        x_labels = drive_df.index.astype(str).tolist()
     else:
         x_labels = drive_df.index.astype(str).tolist()
 
