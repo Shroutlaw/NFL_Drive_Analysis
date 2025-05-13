@@ -264,8 +264,17 @@ def update_suggested_drives(season, week):
      State('game-dropdown', 'value')]
 )
 def display_drive_data(chron_drive, up_val, down_val, scope, season, week, view_mode, game_id):
-    if season is None or week is None:
-        return html.Div("Select inputs."), html.Div()
+    if not season or not week:
+        return html.Div("Select a season and week."), html.Div()
+
+    if view_mode == 'chronological':
+        if not game_id or chron_drive is None:
+            return html.Div("Select a game and drive."), html.Div()
+    else:
+        val = up_val or down_val
+        if not val or '|' not in val:
+            return html.Div("Select a suggested drive."), html.Div()
+        game_id, drive_num = val.split("|")
 
     df = load_season_data(season)
     if df is None:
