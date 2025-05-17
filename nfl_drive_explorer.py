@@ -3,12 +3,25 @@ import pandas as pd
 from dash import Dash, html, dcc, Input, Output, State
 import plotly.express as px
 import plotly.graph_objects as go
+import nfl_data_py as nfl
 
 app = Dash(__name__)
 app.title = "NFL Drive Explorer"
 
 AVAILABLE_SEASONS = list(range(1999, 2025))
 season_cache = {}
+
+team_info = pd.read_csv("team_info.csv")
+
+# Define metric pairs
+metric_pairs = {
+    "Air Yards": ("air_epa", "air_wpa"),
+    "Yards After Catch": ("yac_epa", "yac_wpa"),
+    "Completions Air": ("comp_air_epa", "comp_air_wpa"),
+    "Completions YAC": ("comp_yac_epa", "comp_yac_wpa"),
+    "Total Rush": ("total_home_rush_epa", "total_home_rush_wpa"),
+    "Total Pass": ("total_home_pass_epa", "total_home_pass_wpa"),
+}
 
 def load_season_data(season):
     if season not in season_cache:
@@ -20,8 +33,16 @@ def load_season_data(season):
             season_cache[season] = df
     return season_cache.get(season)
 
+def load_multiple_seasons(seasons):
+    if not isinstance(seasons, list):
+        seasons = [seasons]
+    dataframes = [load_season_data(s) for s in seasons if load_season_data(s) is not None]
+    if dataframes:
+        return pd.concat(dataframes, ignore_index=True)
+    return pd.DataFrame()
+
 app.layout = html.Div([
-    html.H1("NFL Drive Explorer"),
+    html.H1("NFL Dashboard"),
 
     # View toggle
     html.Div([
@@ -29,21 +50,23 @@ app.layout = html.Div([
         dcc.RadioItems(
             id='view-mode',
             options=[
+                {'label': 'EPA/WPA Dashboard', 'value': 'epa/wpa'},
                 {'label': 'Suggested', 'value': 'suggested'},
                 {'label': 'Chronological', 'value': 'chronological'}
             ],
-            value='suggested',
+            value='epa/wpa',
             labelStyle={'display': 'inline-block', 'marginRight': '15px'}
         )
     ], style={'marginBottom': '20px'}),
 
-    # Season, Week, Game row
+    # Shared: Season and Week only
     html.Div([
         html.Div([
             html.Label("Season:"),
             dcc.Dropdown(
-                options=[{'label': str(s), 'value': s} for s in AVAILABLE_SEASONS],
                 id='season-dropdown',
+                options=[],  # populated by callback
+                value=2024,
                 placeholder="Season"
             )
         ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
@@ -55,21 +78,22 @@ app.layout = html.Div([
                 options=[{'label': f"Week {w}", 'value': w} for w in range(1, 19)],
                 placeholder="Week"
             )
-        ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'}),
-
-        html.Div([
-            html.Label("Game:"),
-            dcc.Dropdown(id='game-dropdown', placeholder="Game")
-        ], id='game-dropdown-container', style={'width': '40%', 'display': 'inline-block', 'paddingRight': '10px'}),
+        ], style={'width': '15%', 'display': 'inline-block', 'paddingRight': '10px'})
     ], style={'marginBottom': '20px'}),
 
-    # Chronological view dropdown
+    # EPA/WPA Dashboard View
     html.Div([
-        html.Label("Drive (Chronological):"),
-        dcc.Dropdown(id='drive-dropdown', placeholder="Choose a drive...")
-    ], id='chronological-container', style={'marginBottom': '20px'}),
+        html.H2("NFL Team EPA vs WPA"),
+        html.Label("Select Metric Category:"),
+        dcc.Dropdown(
+            id='metric-pair',
+            options=[{'label': k, 'value': k} for k in metric_pairs],
+            value="Air Yards"
+        ),
+        dcc.Graph(id='logo-scatter')
+    ], id='epa-wpa-container', style={'marginBottom': '30px'}),
 
-    # Suggested view dropdowns
+    # Suggested View
     html.Div([
         html.H3("Turning the Tides"),
 
@@ -79,36 +103,160 @@ app.layout = html.Div([
         html.Br(),
 
         html.Label("Expected Win ➜ Expected Loss:"),
-        dcc.Dropdown(id='suggested-down-dropdown', placeholder="Choose a collapse drive..."),
+        dcc.Dropdown(id='suggested-down-dropdown', placeholder="Choose a collapse drive...")
 
     ], id='suggested-container', style={'marginBottom': '20px'}),
 
-    html.Div(id='drive-table'),
-    html.Br(),
+    # Chronological View
+    html.Div([
+        html.Div([
+            html.Label("Game:"),
+            dcc.Dropdown(id='game-dropdown', placeholder="Game")
+        ], style={'width': '40%', 'display': 'inline-block', 'paddingRight': '10px'}),
 
-    # ✅ REQUIRED FOR CHARTS
-    html.Div(id='chart-container')
+        html.Div([
+            html.Label("Drive (Chronological):"),
+            dcc.Dropdown(id='drive-dropdown', placeholder="Choose a drive...")
+        ], style={'width': '48%', 'display': 'inline-block', 'marginTop': '10px'})
+    ], id='chronological-container', style={'marginBottom': '20px'}),
+
+    # Drive Table and Charts
+    html.Div(id='drive-visuals-container', children=[
+        html.Div(id='drive-table'),
+        html.Br(),
+        html.Div(id='chart-container')
+    ])
 ])
 
 @app.callback(
-    [Output('chronological-container', 'style'),
+    Output('logo-scatter', 'figure'),
+    Input('metric-pair', 'value'),
+    Input('season-dropdown', 'value')
+)
+def update_graph(selected_pair, season):
+    if season is None:
+        return go.Figure()
+
+    df = load_season_data(season)
+    if df is None or df.empty:
+        return go.Figure()
+    epa_field, wpa_field = metric_pairs[selected_pair]
+
+    if "total_home" in epa_field:
+        home_df = df[df["posteam"] == df["home_team"]][["posteam", epa_field, wpa_field]]
+        away_df = df[df["posteam"] == df["away_team"]][["posteam", 
+            epa_field.replace("home", "away"), 
+            wpa_field.replace("home", "away")]]
+        away_df.columns = home_df.columns
+        combined = pd.concat([home_df, away_df]).dropna()
+    else:
+        combined = df.dropna(subset=[epa_field, wpa_field, "posteam"])
+        combined = combined[["posteam", epa_field, wpa_field]]
+
+    team_stats = combined.groupby("posteam").mean().reset_index()
+    team_stats.columns = ["Team", "Avg_EPA", "Avg_WPA"]
+    team_stats = team_stats.merge(team_info, how="left", left_on="Team", right_on="team_abbr")
+
+    # Create figure and add logos
+    fig = go.Figure()
+
+    # Calculate axis range
+    x_min, x_max = team_stats["Avg_WPA"].min(), team_stats["Avg_WPA"].max()
+    y_min, y_max = team_stats["Avg_EPA"].min(), team_stats["Avg_EPA"].max()
+    sizex = (x_max - x_min) * 0.03
+    sizey = (y_max - y_min) * 0.03
+
+    # Add logos as images
+    for _, row in team_stats.iterrows():
+        fig.add_layout_image(
+            dict(
+                source=row["team_logo_espn"],
+                x=row["Avg_WPA"],
+                y=row["Avg_EPA"],
+                xref="x",
+                yref="y",
+                sizex=sizex,
+                sizey=sizey,
+                xanchor="center",
+                yanchor="middle",
+                layer="above"
+            )
+        )
+
+    # Add invisible scatter for hover/axis scaling
+    fig.add_trace(go.Scatter(
+        x=team_stats["Avg_WPA"],
+        y=team_stats["Avg_EPA"],
+        mode="markers+text",
+        text=team_stats["Team"],
+        textposition="top center",
+        marker=dict(size=5, opacity=0),
+        hovertext=[
+            f"{row['Team']}<br>EPA: {row['Avg_EPA']:.3f}<br>WPA: {row['Avg_WPA']:.3f}"
+            for _, row in team_stats.iterrows()
+        ],
+        hoverinfo="text"
+    ))
+
+    fig.update_layout(
+        title=f"{selected_pair} — Average EPA vs WPA by Team (Logos)",
+        xaxis_title="Average WPA",
+        yaxis_title="Average EPA",
+        xaxis=dict(showgrid=True, zeroline=True),
+        yaxis=dict(showgrid=True, zeroline=True),
+        plot_bgcolor="white",
+        margin=dict(l=40, r=40, t=60, b=40),
+        height=700
+    )
+
+    return fig
+
+@app.callback(
+    [Output('epa-wpa-container', 'style'),
      Output('suggested-container', 'style'),
-     Output('game-dropdown-container', 'style')],
+     Output('chronological-container', 'style'),
+     Output('drive-visuals-container', 'style')],
     Input('view-mode', 'value')
 )
 def toggle_view_mode(view_mode):
-    if view_mode == 'chronological':
+    if view_mode == 'epa/wpa':
         return (
             {'display': 'block'},
             {'display': 'none'},
-            {'display': 'inline-block', 'width': '40%', 'paddingRight': '10px'}
-        )
-    else:
-        return (
             {'display': 'none'},
-            {'display': 'block'},
             {'display': 'none'}
         )
+    elif view_mode == 'suggested':
+        return (
+            {'display': 'none'},
+            {'display': 'block'},
+            {'display': 'none'},
+            {'display': 'block'}
+        )
+    elif view_mode == 'chronological':
+        return (
+            {'display': 'none'},
+            {'display': 'none'},
+            {'display': 'block'},
+            {'display': 'block'}
+        )
+
+@app.callback(
+    Output('season-dropdown', 'options'),
+    Input('view-mode', 'value')
+)
+def update_season_dropdown(view_mode):
+    if view_mode is None:
+        view_mode = 'epa/wpa'
+
+    return [
+        {
+            'label': str(year),
+            'value': year,
+            'disabled': True if view_mode == 'epa/wpa' and year < 2006 else False
+        }
+        for year in range(1999, 2025)
+    ]
 
 @app.callback(
     Output('drive-dropdown', 'options'),
@@ -341,6 +489,6 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
 
 # Run on Render
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8050))
+    port = int(os.environ.get("PORT", 8056))
     app.run(debug=False, dev_tools_ui=False, dev_tools_props_check=False,
             host='0.0.0.0', port=port)
