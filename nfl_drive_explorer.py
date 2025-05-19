@@ -205,7 +205,7 @@ def update_graph(selected_pair, season):
         xaxis=dict(showgrid=True, zeroline=True),
         yaxis=dict(showgrid=True, zeroline=True),
         plot_bgcolor="white",
-        margin=dict(l=40, r=40, t=60, b=40),
+        margin=dict(l=40, r=40, t=20, b=10),
         height=700
     )
 
