@@ -163,8 +163,8 @@ def update_graph(selected_pair, season):
     # Calculate axis range
     x_min, x_max = team_stats["Avg_WPA"].min(), team_stats["Avg_WPA"].max()
     y_min, y_max = team_stats["Avg_EPA"].min(), team_stats["Avg_EPA"].max()
-    sizex = (x_max - x_min) * 0.03
-    sizey = (y_max - y_min) * 0.03
+    sizex = (x_max - x_min) * 0.04
+    sizey = (y_max - y_min) * 0.04
 
     # Add logos as images
     for _, row in team_stats.iterrows():
