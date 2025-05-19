@@ -91,7 +91,7 @@ app.layout = html.Div([
             value="Air Yards"
         ),
         dcc.Graph(id='logo-scatter')
-    ], id='epa-wpa-container', style={'marginBottom': '30px'}),
+    ], id='epa-wpa-container', style={'marginBottom': '20px'}),
 
     # Suggested View
     html.Div([
@@ -105,7 +105,7 @@ app.layout = html.Div([
         html.Label("Expected Win ➜ Expected Loss:"),
         dcc.Dropdown(id='suggested-down-dropdown', placeholder="Choose a collapse drive...")
 
-    ], id='suggested-container', style={'marginBottom': '20px'}),
+    ], id='suggested-container', style={'marginBottom': '10px'}),
 
     # Chronological View
     html.Div([
@@ -118,7 +118,7 @@ app.layout = html.Div([
             html.Label("Drive (Chronological):"),
             dcc.Dropdown(id='drive-dropdown', placeholder="Choose a drive...")
         ], style={'width': '48%', 'display': 'inline-block', 'marginTop': '10px'})
-    ], id='chronological-container', style={'marginBottom': '20px'}),
+    ], id='chronological-container', style={'marginBottom': '10px'}),
 
     # Drive Table and Charts
     html.Div(id='drive-visuals-container', children=[
@@ -479,10 +479,10 @@ def display_drive_data(chron_drive, up_val, down_val, season, week, view_mode, g
 
     # Layout
     charts = html.Div([
-        html.Div(dcc.Graph(figure=wp_fig), style={'width': '48%', 'display': 'inline-block', 'padding': '1%'}),
-        html.Div(dcc.Graph(figure=mix_fig), style={'width': '48%', 'display': 'inline-block', 'padding': '1%'}),
-        html.Div(dcc.Graph(figure=radar_fig), style={'width': '48%', 'display': 'inline-block', 'padding': '1%'}),
-        html.Div(dcc.Graph(figure=bubble_fig), style={'width': '48%', 'display': 'inline-block', 'padding': '1%'})
+        html.Div(dcc.Graph(figure=wp_fig), style={'width': '32%', 'display': 'inline-block', 'padding': '1%'}),
+        html.Div(dcc.Graph(figure=mix_fig), style={'width': '13%', 'display': 'inline-block', 'padding': '1%'}),
+        html.Div(dcc.Graph(figure=radar_fig), style={'width': '13%', 'display': 'inline-block', 'padding': '1%'}),
+        html.Div(dcc.Graph(figure=bubble_fig), style={'width': '32%', 'display': 'inline-block', 'padding': '1%'})
     ], id='chart-container')
 
     return table, charts
