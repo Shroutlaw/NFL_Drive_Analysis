@@ -3,3 +3,4 @@ pandas
 plotly
 nfl_data_py
 pyarrow
+dash-bootstrap-components
