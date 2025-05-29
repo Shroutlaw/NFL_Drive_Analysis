@@ -9,7 +9,7 @@ import plotly.express as px
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
 
-# Load Data
+'''# Load Data
 def load_all_data(folder_path="season_data"):
     season_files = sorted([
         f for f in os.listdir(folder_path) if f.startswith("nfl_") and f.endswith(".csv")
@@ -79,7 +79,11 @@ def classify_games(end_games):
 
     return pd.DataFrame(results)
 
-classified_df = classify_games(end_games)
+classified_df = classify_games(end_games)'''
+
+# Load precomputed classification results (lightweight)
+classified_df = pd.read_csv("season_data/classified_games.csv")
+big_upsets = pd.read_csv("season_data/big_upsets.csv")
 
 # Generate chart data
 big_upsets = classified_df[classified_df['big_home_favorite_upset'] | classified_df['big_away_favorite_upset']]
