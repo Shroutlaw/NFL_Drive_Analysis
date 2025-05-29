@@ -280,5 +280,11 @@ def display_drive_plays(drive_data, active_cell, game_id):
     plays = df[(df['game_id'] == game_id) & (df['drive'] == selected_drive)][['play_id', 'qtr', 'time', 'posteam', 'desc', 'wp']]
     return plays.to_dict('records'), [{'name': i, 'id': i} for i in plays.columns]
 
+#if __name__ == '__main__':
+    #app.run(debug=True, port=7777)
+
+# Run on Render
 if __name__ == '__main__':
-    app.run(debug=True, port=7777)
+    port = int(os.environ.get("PORT", 7777))
+    app.run(debug=False, dev_tools_ui=False, dev_tools_props_check=False,
+            host='0.0.0.0', port=port)
