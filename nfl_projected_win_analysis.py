@@ -9,7 +9,13 @@ import plotly.express as px
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
 
-'''# Load Data
+def load_single_season_data(season, folder_path="season_data"):
+    file_path = os.path.join(folder_path, f"nfl_{season}.csv")
+    if os.path.exists(file_path):
+        return pd.read_csv(file_path, low_memory=False)
+    return pd.DataFrame()
+
+'''# Load Data all seasons on local device - will not work on render
 def load_all_data(folder_path="season_data"):
     season_files = sorted([
         f for f in os.listdir(folder_path) if f.startswith("nfl_") and f.endswith(".csv")
@@ -234,17 +240,29 @@ def update_game_selector(game_type, season):
     filtered = filtered.sort_values(by='season', ascending=False)
     return [{'label': f"{row['game_id']} - {row['expected_winner']} expected, {row['actual_winner']} won", 'value': row['game_id']} for _, row in filtered.iterrows()]
 
-
 @app.callback(
     Output('drive_table', 'data'),
     Output('drive_table', 'columns'),
-    Input('game_selector', 'value')
+    Input('game_selector', 'value'),
+    State('season_selector', 'value')
 )
-def display_drive_summary(game_id):
-    if not game_id:
+def display_drive_summary(game_id, season):
+    #if not game_id:
+    if not game_id or not season:
         return [], []
-    game_df = df[df['game_id'] == game_id].sort_values(by=['drive', 'play_id'])
-    actual_winner = classified_df[classified_df['game_id'] == game_id]['actual_winner'].values[0]
+
+    #For single season on render:
+    season_df = load_single_season_data(season)
+    game_df = season_df[season_df['game_id'] == game_id].sort_values(by=['drive', 'play_id'])
+
+    if game_df.empty:
+        return [], []
+
+    actual_winner = game_df.iloc[-1]['home_team'] if game_df.iloc[-1]['total_home_score'] > game_df.iloc[-1]['total_away_score'] else game_df.iloc[-1]['away_team']
+
+    #For all seasons on render:
+    #game_df = df[df['game_id'] == game_id].sort_values(by=['drive', 'play_id'])
+    #actual_winner = classified_df[classified_df['game_id'] == game_id]['actual_winner'].values[0]
 
     drive_data = []
     for drive, group in game_df.groupby('drive'):
@@ -273,19 +291,36 @@ def display_drive_summary(game_id):
 @app.callback(
     Output('drive_plays', 'data'),
     Output('drive_plays', 'columns'),
-    Input('drive_table', 'data'),
     Input('drive_table', 'active_cell'),
-    Input('game_selector', 'value')
-)
-def display_drive_plays(drive_data, active_cell, game_id):
-    if not active_cell or not drive_data or not game_id:
-        return [], []
-    selected_drive = drive_data[active_cell['row']]['drive']
-    plays = df[(df['game_id'] == game_id) & (df['drive'] == selected_drive)][['play_id', 'qtr', 'time', 'posteam', 'desc', 'wp']]
-    return plays.to_dict('records'), [{'name': i, 'id': i} for i in plays.columns]
+    State('drive_table', 'data'),
+    State('season_selector', 'value'),
+    State('game_selector', 'value')
 
-#if __name__ == '__main__':
-    #app.run(debug=True, port=7777)
+)
+def display_drive_plays(active_cell, drive_data, season, game_id):
+    #if not active_cell or not drive_data or not game_id:
+    if not active_cell or not game_id or not season:
+        return [], []
+
+    drive_num = drive_data[active_cell['row']]['drive']
+
+    season_df = load_single_season_data(season)
+    game_df = season_df[season_df['game_id'] == game_id]
+    drive_df = game_df[game_df['drive'] == drive_num]
+
+    if drive_df.empty:
+        return [], []
+
+    selected_plays = drive_df[['play_id', 'qtr', 'time', 'posteam', 'desc', 'wp']]
+    return selected_plays.to_dict('records'), [{'name': col, 'id': col} for col in selected_plays.columns]
+
+    #For local machine all seasons
+    #selected_drive = drive_data[active_cell['row']]['drive']
+    #plays = df[(df['game_id'] == game_id) & (df['drive'] == selected_drive)][['play_id', 'qtr', 'time', 'posteam', 'desc', 'wp']]
+    #return plays.to_dict('records'), [{'name': i, 'id': i} for i in plays.columns]
+
+'''if __name__ == '__main__':
+    app.run(debug=True, port=7777)'''
 
 # Run on Render
 if __name__ == '__main__':
