@@ -26,8 +26,8 @@ dtype_map = {
     'defteam': 'category',
     'desc': 'string',
     'wp': 'float32',
-    'start_wp': 'float32',
-    'end_wp': 'float32'
+    #'start_wp': 'float32',
+    #'end_wp': 'float32'
 }
 
 # Only include necessary columns to reduce size
