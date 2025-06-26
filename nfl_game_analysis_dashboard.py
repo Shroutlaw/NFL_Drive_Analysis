@@ -26,7 +26,9 @@ for filename in season_files:
 df = pd.concat(dfs, ignore_index=True)
 
 # Create END GAME lookup
-end_games = df[df['desc'].str.contains("END GAME", na=False)]
+end_games = pd.read_csv("season_data/end_games.csv")
+end_games['game_id'] = end_games['game_id'].astype(str)
+#end_games = df[df['desc'].str.contains("END GAME", na=False)]
 end_game_lookup = end_games.set_index('game_id').to_dict('index')
 unique_game_ids = df['game_id'].unique()
 
@@ -52,7 +54,7 @@ end_games['actual'] = end_games.apply(
 )
 
 # Convert game_id to string
-end_games['game_id'] = end_games['game_id'].astype(str)
+#end_games['game_id'] = end_games['game_id'].astype(str)
 
 # Upset categories
 even_match = end_games[end_games['expected'] == 'tie']['game_id'].tolist()
