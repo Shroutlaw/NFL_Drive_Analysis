@@ -225,56 +225,14 @@ for game_id, group in df_filtered.groupby("game_id"):
     away_score = final_row["total_away_score"]
     winners[game_id] = home_team if home_score > away_score else away_team
 
-# Calculate drive-level changes from the winner's perspective
-drive_wp_changes = []
+df_drive_wp = pd.read_excel("season_data/drive_wp_changes.xlsx")
 
-for (game_id, drive), group in df_filtered.groupby(['game_id', 'drive']):
-    winner = winners[game_id]
-
-    start_row = group.iloc[0]
-    end_row = group.iloc[-1]
-
-    # Always express WP from winning team's POV
-    if start_row['posteam'] == winner:
-        start_wp = start_row['wp']
-    elif start_row['defteam'] == winner:
-        start_wp = 1 - start_row['wp']
-    else:
-        start_wp = None  # edge case, should not happen
-
-    if end_row['posteam'] == winner:
-        end_wp = end_row['wp']
-    elif end_row['defteam'] == winner:
-        end_wp = 1 - end_row['wp']
-    else:
-        end_wp = None
-
-    wp_change = end_wp - start_wp if start_wp is not None and end_wp is not None else None
-
-    drive_wp_changes.append({
-        'game_id': game_id,
-        'drive': drive,
-        'posteam': start_row['posteam'],
-        'defteam': start_row['defteam'],
-        'yards_gained': group['yards_gained'].fillna(0).sum(),
-        'total_home_score': end_row['total_home_score'],
-        'total_away_score': end_row['total_away_score'],
-        'start_wp': start_wp,
-        'end_wp': end_wp,
-        'wp_change': wp_change,
-        'num_plays': len(group),
-        'epa_change': group['epa'].sum()
-    })
-
-df_drive_wp = pd.DataFrame(drive_wp_changes)
-
-# Now you can safely compute impact score
+# Optional splits if needed
 df_drive_wp['drive_impact_score'] = (
     df_drive_wp['wp_change'].abs() * df_drive_wp['epa_change'] * df_drive_wp['num_plays']
 )
 
 flip_df = pd.read_excel("season_data/flip_points.xlsx")
-flip_df_all = flip_df.copy()
 flip_df_zero_score = flip_df[flip_df['total_score'] == 0]
 flip_df_nonzero_score = flip_df[flip_df['total_score'] != 0]
 
