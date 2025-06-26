@@ -19,7 +19,8 @@ for filename in season_files:
     print(f"Loading {filename}...")
     season_path = os.path.join(folder_path, filename)
     df = pd.read_csv(season_path, low_memory=False)
-    df['game_id'] = df['game_id'].astype(str)
+    #df['game_id'] = df['game_id'].astype(str)
+    dtype={"game_id": str}  # When reading CSV
     dfs.append(df)
 
 # Concatenate all seasons into one DataFrame
@@ -27,7 +28,8 @@ df = pd.concat(dfs, ignore_index=True)
 
 # Create END GAME lookup
 end_games = pd.read_csv("season_data/end_games.csv")
-end_games['game_id'] = end_games['game_id'].astype(str)
+#end_games['game_id'] = end_games['game_id'].astype(str)
+dtype={"game_id": str}  # When reading CSV
 #end_games = df[df['desc'].str.contains("END GAME", na=False)]
 end_game_lookup = end_games.set_index('game_id').to_dict('index')
 unique_game_ids = df['game_id'].unique()
