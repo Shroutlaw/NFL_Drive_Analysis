@@ -27,7 +27,6 @@ df = pd.concat(dfs, ignore_index=True)
 
 # Create END GAME lookup
 end_games = df[df['desc'].str.contains("END GAME", na=False)]
-#end_games['season'] = end_games['game_id'].str.split('_').str[0]
 end_game_lookup = end_games.set_index('game_id').to_dict('index')
 unique_game_ids = df['game_id'].unique()
 
@@ -43,61 +42,33 @@ total_home_favored = end_games[end_games['spread_line'] > 0]
 # Total games where the away team was favored (spread < 0)
 total_away_favored = end_games[end_games['spread_line'] < 0]
 
-# Determine upsets
-upsets = []
-confirmed_wins = []
-even_match = []
-upsets_big_spread = []
-home_favored_upsets = []
-away_favored_upsets = []
+# Determine expected and actual winners
+end_games['expected'] = end_games['spread_line'].apply(lambda s: 'home' if s > 0 else 'away' if s < 0 else 'tie')
+end_games['actual'] = end_games.apply(
+    lambda row: 'home' if row['total_home_score'] > row['total_away_score']
+    else 'away' if row['total_away_score'] > row['total_home_score']
+    else 'tie',
+    axis=1
+)
 
-all_home_favored_upsets = []
-all_away_favored_upsets = []
+# Convert game_id to string
+end_games['game_id'] = end_games['game_id'].astype(str)
 
-for game_id, row in end_game_lookup.items():
-    game_id = str(game_id)  # Ensures consistency
+# Upset categories
+even_match = end_games[end_games['expected'] == 'tie']['game_id'].tolist()
+confirmed_wins = end_games[end_games['expected'] == end_games['actual']]['game_id'].tolist()
+upsets_df = end_games[end_games['expected'] != end_games['actual']]
+upsets = upsets_df['game_id'].tolist()
 
-    spread = row['spread_line']
-    home_score = row['total_home_score']
-    away_score = row['total_away_score']
+# By favorite type
+all_home_favored_upsets = upsets_df[upsets_df['spread_line'] > 0]['game_id'].tolist()
+all_away_favored_upsets = upsets_df[upsets_df['spread_line'] < 0]['game_id'].tolist()
 
-    if pd.isna(spread):
-        continue
-
-    if spread > 0:
-        expected = 'home'
-    elif spread < 0:
-        expected = 'away'
-    else:
-        expected = 'tie'
-
-    if home_score > away_score:
-        actual = 'home'
-    elif away_score > home_score:
-        actual = 'away'
-    else:
-        actual = 'tie'
-
-    if expected == 'tie' or actual == 'tie':
-        even_match.append(game_id)
-    elif expected == actual:
-        confirmed_wins.append(game_id)
-    else:
-        upsets.append(game_id)
-
-        # ✅ Track all upsets by favorite type
-        if spread > 0:
-            all_home_favored_upsets.append(game_id)
-        elif spread < 0:
-            all_away_favored_upsets.append(game_id)
-
-        # ✅ Track big spread upsets
-        if abs(spread) >= 6:
-            upsets_big_spread.append(game_id)
-            if spread > 0:
-                home_favored_upsets.append(game_id)
-            else:
-                away_favored_upsets.append(game_id)
+# Big spread upsets (≥ 6 pts)
+big_spread_upsets_df = upsets_df[upsets_df['spread_line'].abs() >= 6]
+upsets_big_spread = big_spread_upsets_df['game_id'].tolist()
+home_favored_upsets = big_spread_upsets_df[big_spread_upsets_df['spread_line'] > 0]['game_id'].tolist()
+away_favored_upsets = big_spread_upsets_df[big_spread_upsets_df['spread_line'] < 0]['game_id'].tolist()
 
 home_fav_upset_rate = len(all_home_favored_upsets) / len(total_home_favored)
 away_fav_upset_rate = len(all_away_favored_upsets) / len(total_away_favored)
@@ -148,7 +119,7 @@ multi_flip_seasons = game_id_to_season.loc[multi_flip_game_ids]
 # Count and sort by season
 seasonal_flip_counts = multi_flip_seasons.value_counts().sort_index()
 
-# Print the results
+'''# Print the results
 print("Multi-Flip Games by Season:")
 print(seasonal_flip_counts)
 
@@ -181,7 +152,7 @@ print(f"Expected winner LOST (upset): {len(multi_flip_expected_winner_lost)}")
 print("\nBig Spread Games with Multiple Flips That Went to Overtime:")
 print(f"Total overtime games: {len(multi_flip_overtime_games)}")
 print(f" - Expected winner WON in OT: {len(multi_flip_overtime_expected_winner_won)}")
-print(f" - Expected winner LOST in OT: {len(multi_flip_overtime_expected_winner_lost)}")
+print(f" - Expected winner LOST in OT: {len(multi_flip_overtime_expected_winner_lost)}")'''
 
 # Define summary stats from existing values
 summary_stats = {
