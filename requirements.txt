@@ -6,3 +6,4 @@ pyarrow
 dash-bootstrap-components
 numpy
 gunicorn
+matplotlib
