@@ -26,6 +26,13 @@ for filename in season_files:
 # Concatenate all seasons into one DataFrame
 df = pd.concat(dfs, ignore_index=True)
 
+# Drop unnecessary columns early to reduce memory footprint
+columns_to_keep = [
+    'game_id', 'season', 'play_id', 'drive', 'posteam', 'defteam', 'home_team', 'away_team',
+    'total_home_score', 'total_away_score', 'qtr', 'time', 'down', 'ydstogo', 'wpa', 'desc'
+]
+df = df[[col for col in columns_to_keep if col in df.columns]]
+
 # Create END GAME lookup
 end_games = pd.read_csv("season_data/end_games.csv")
 #end_games['game_id'] = end_games['game_id'].astype(str)
@@ -122,7 +129,7 @@ multi_flip_seasons = game_id_to_season.loc[multi_flip_game_ids]
 
 # Count and sort by season
 seasonal_flip_counts = multi_flip_seasons.value_counts().sort_index()
-'''
+
 # Print the results
 print("Multi-Flip Games by Season:")
 print(seasonal_flip_counts)
@@ -156,7 +163,7 @@ print(f"Expected winner LOST (upset): {len(multi_flip_expected_winner_lost)}")
 print("\nBig Spread Games with Multiple Flips That Went to Overtime:")
 print(f"Total overtime games: {len(multi_flip_overtime_games)}")
 print(f" - Expected winner WON in OT: {len(multi_flip_overtime_expected_winner_won)}")
-print(f" - Expected winner LOST in OT: {len(multi_flip_overtime_expected_winner_lost)}")'''
+print(f" - Expected winner LOST in OT: {len(multi_flip_overtime_expected_winner_lost)}")
 
 # Define summary stats from existing values
 summary_stats = {
@@ -211,17 +218,17 @@ category_game_sets = {
 relevant_game_ids = set()
 for game_list in category_game_sets.values():
     relevant_game_ids.update(game_list)
-df_filtered = df[df['game_id'].isin(relevant_game_ids)]
+df = df[df['game_id'].isin(relevant_game_ids)]
 
 # Filter out rows with no posteam or defteam (e.g., END QUARTER, Timeout, etc.)
-df_filtered = df_filtered[df_filtered['posteam'].notna() & df_filtered['defteam'].notna()]
+df = df[df['posteam'].notna() & df['defteam'].notna()]
 
 # Ensure sorting so drives are in order
-df_filtered = df_filtered.sort_values(by=['game_id', 'drive', 'play_id'])
+df = df.sort_values(by=['game_id', 'drive', 'play_id'])
 
 # Determine winners first
 winners = {}
-for game_id, group in df_filtered.groupby("game_id"):
+for game_id, group in df.groupby("game_id"):
     final_row = group.iloc[-1]
     home_team = final_row["home_team"]
     away_team = final_row["away_team"]
@@ -240,8 +247,8 @@ flip_df = pd.read_excel("season_data/flip_points.xlsx")
 flip_df_zero_score = flip_df[flip_df['total_score'] == 0]
 flip_df_nonzero_score = flip_df[flip_df['total_score'] != 0]
 
-df_plays = df[df['game_id'].isin(relevant_game_ids)]
-df_plays = df_plays.sort_values(by=['game_id', 'drive', 'play_id'])
+#df_plays = df[df['game_id'].isin(relevant_game_ids)]
+#df_plays = df_plays.sort_values(by=['game_id', 'drive', 'play_id'])
 
 app = Dash(__name__)
 app.title = "NFL Expected Winner Analysis"
@@ -763,9 +770,9 @@ def update_play_table(active_cell, table_data, game_id):
 
     selected_drive = table_data[row_idx]["drive"]
 
-    plays = df_plays[
-        (df_plays["game_id"] == game_id) &
-        (df_plays["drive"] == selected_drive)
+    plays = df[
+        (df["game_id"] == game_id) &
+        (df["drive"] == selected_drive)
     ]
 
     return plays[["qtr", "time", "posteam", "defteam", "down", "ydstogo", "wpa", "desc"]].to_dict("records")
