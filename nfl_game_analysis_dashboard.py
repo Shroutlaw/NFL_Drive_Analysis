@@ -8,22 +8,10 @@ import matplotlib.pyplot as plt
 from dash import Dash, dcc, html, Input, Output, dash_table, callback, State, MATCH, ALL, callback_context
 
 # Load all CSVs from the 'season_data' folder
-'''folder_path = "season_data"
+folder_path = "season_data"
 season_files = sorted([
     f for f in os.listdir(folder_path) if f.startswith("nfl_") and f.endswith(".csv")
 ])
-
-# Load and combine all season data
-dfs = []
-for filename in season_files:
-    #print(f"Loading {filename}...")
-    season_path = os.path.join(folder_path, filename)
-    df = pd.read_csv(season_path, low_memory=False)
-    df['game_id'] = df['game_id'].astype(str)
-    dfs.append(df)
-
-# Concatenate all seasons into one DataFrame
-df = pd.concat(dfs, ignore_index=True)'''
 
 # Define consistent column types to reduce memory
 dtype_map = {
@@ -50,7 +38,17 @@ for filename in season_files:
     season_path = os.path.join(folder_path, filename)
     df_season = pd.read_csv(season_path, usecols=usecols, dtype=dtype_map)
     dfs.append(df_season)
+    
+# Load and combine all season data
+'''dfs = []
+for filename in season_files:
+    #print(f"Loading {filename}...")
+    season_path = os.path.join(folder_path, filename)
+    df = pd.read_csv(season_path, low_memory=False)
+    df['game_id'] = df['game_id'].astype(str)
+    dfs.append(df)'''
 
+# Concatenate all seasons into one DataFrame
 df = pd.concat(dfs, ignore_index=True)
 
 # Create END GAME lookup
