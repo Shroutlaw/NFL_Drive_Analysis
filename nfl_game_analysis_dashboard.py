@@ -13,40 +13,14 @@ season_files = sorted([
     f for f in os.listdir(folder_path) if f.startswith("nfl_") and f.endswith(".csv")
 ])
 
-# Define consistent column types to reduce memory
-dtype_map = {
-    'game_id': 'str',
-    'season': 'int16',
-    'spread_line': 'float32',
-    'total_home_score': 'int8',
-    'total_away_score': 'int8',
-    'home_team': 'category',
-    'away_team': 'category',
-    'posteam': 'category',
-    'defteam': 'category',
-    'desc': 'string',
-    'wp': 'float32',
-    #'start_wp': 'float32',
-    #'end_wp': 'float32'
-}
-
-# Only include necessary columns to reduce size
-usecols = list(dtype_map.keys())
-
+# Load and combine all season data
 dfs = []
 for filename in season_files:
-    season_path = os.path.join(folder_path, filename)
-    df_season = pd.read_csv(season_path, usecols=usecols, dtype=dtype_map)
-    dfs.append(df_season)
-    
-# Load and combine all season data
-'''dfs = []
-for filename in season_files:
-    #print(f"Loading {filename}...")
+    print(f"Loading {filename}...")
     season_path = os.path.join(folder_path, filename)
     df = pd.read_csv(season_path, low_memory=False)
     df['game_id'] = df['game_id'].astype(str)
-    dfs.append(df)'''
+    dfs.append(df)
 
 # Concatenate all seasons into one DataFrame
 df = pd.concat(dfs, ignore_index=True)
@@ -138,83 +112,30 @@ big_away_pct = round(big_away_upset_rate * 100, 1)
 # Create grouped game lookup
 grouped_games = dict(tuple(df.groupby('game_id')))
 
-# Initialize trackers
-expected_winner_flips = {'no_change': [], 'one_change': [], 'multi_change': []}
-expected_winner_flips_big_spread = {'no_change': [], 'one_change': [], 'multi_change': []}
-multi_flip_expected_winner_won = []
-multi_flip_expected_winner_lost = []
-multi_flip_overtime_games = []
-multi_flip_overtime_expected_winner_won = []
-multi_flip_overtime_expected_winner_lost = []
 
-# Flip analysis
-for game_id in unique_game_ids:
-    if game_id not in grouped_games or game_id not in end_game_lookup:
-        continue
+# Load game ID lists from Excel
+id_excel = pd.ExcelFile("multi_flip_game_ids.xlsx")
 
-    game_df = grouped_games[game_id].sort_values(by=['qtr', 'time'], ascending=[True, False])
-    row = end_game_lookup[game_id]
+#multi_flip_game_ids = id_excel.parse('multi_flip_game_ids')['game_id'].tolist()
+multi_flip_expected_winner_won = id_excel.parse('multi_flip_expected_winner_won')['game_id'].tolist()
+multi_flip_expected_winner_lost = id_excel.parse('multi_flip_expected_winner_lost')['game_id'].tolist()
+multi_flip_overtime_games = id_excel.parse('multi_flip_overtime_games')['game_id'].tolist()
+multi_flip_overtime_expected_winner_won = id_excel.parse('multi_flip_ot_expected_winner_w')['game_id'].tolist()
+multi_flip_overtime_expected_winner_lost = id_excel.parse('multi_flip_ot_expected_winner_l')['game_id'].tolist()
 
-    # Build winner series
-    winner_series = []
-    for _, play in game_df.iterrows():
-        home_wp = play.get('home_wp')
-        away_wp = play.get('away_wp')
-        if pd.isna(home_wp) or pd.isna(away_wp):
-            continue
-        if home_wp > 0.5:
-            winner_series.append('home')
-        elif away_wp > 0.5:
-            winner_series.append('away')
-        else:
-            winner_series.append('none')
+# Dictionary-based: overall flip categories
+expected_winner_flips = {
+    'no_change': id_excel.parse('flips_no_change')['game_id'].tolist(),
+    'one_change': id_excel.parse('flips_one_change')['game_id'].tolist(),
+    'multi_change': id_excel.parse('flips_multi_change')['game_id'].tolist()
+}
 
-    # Collapse consecutive entries and remove 'none'
-    compressed = [winner_series[0]] if winner_series else []
-    for side in winner_series[1:]:
-        if side != compressed[-1]:
-            compressed.append(side)
-    compressed = [w for w in compressed if w != 'none']
-    flip_count = len(compressed) - 1
-    max_qtr = game_df['qtr'].max()
-
-    spread = row['spread_line']
-    home_score = row['total_home_score']
-    away_score = row['total_away_score']
-
-    if pd.isna(spread) or (home_score == away_score):
-        continue
-    expected = 'home' if spread > 0 else 'away'
-    actual = 'home' if home_score > away_score else 'away'
-
-    # Track overall flips
-    if flip_count == 0:
-        expected_winner_flips['no_change'].append(game_id)
-    elif flip_count == 1:
-        expected_winner_flips['one_change'].append(game_id)
-    else:
-        expected_winner_flips['multi_change'].append(game_id)
-
-    # Track big spread flips
-    if game_id in big_spread_game_ids:
-        if flip_count == 0:
-            expected_winner_flips_big_spread['no_change'].append(game_id)
-        elif flip_count == 1:
-            expected_winner_flips_big_spread['one_change'].append(game_id)
-        else:
-            expected_winner_flips_big_spread['multi_change'].append(game_id)
-
-            if expected == actual:
-                multi_flip_expected_winner_won.append(game_id)
-            else:
-                multi_flip_expected_winner_lost.append(game_id)
-
-            if max_qtr > 4:
-                multi_flip_overtime_games.append(game_id)
-                if expected == actual:
-                    multi_flip_overtime_expected_winner_won.append(game_id)
-                else:
-                    multi_flip_overtime_expected_winner_lost.append(game_id)
+# Dictionary-based: big spread flip categories
+expected_winner_flips_big_spread = {
+    'no_change': id_excel.parse('flips_big_no_change')['game_id'].tolist(),
+    'one_change': id_excel.parse('flips_big_one_change')['game_id'].tolist(),
+    'multi_change': id_excel.parse('flips_big_multi_change')['game_id'].tolist()
+}
 
 multi_flip_game_ids = expected_winner_flips['multi_change']
 
@@ -230,7 +151,6 @@ seasonal_flip_counts = multi_flip_seasons.value_counts().sort_index()
 # Print the results
 print("Multi-Flip Games by Season:")
 print(seasonal_flip_counts)
-
 
 # Final printout
 print(f"Total unique games: {len(unique_game_ids)}")
@@ -968,8 +888,7 @@ def update_play_table(active_cell, table_data, game_id):
 
     return plays[["qtr", "time", "posteam", "defteam", "down", "ydstogo", "wpa", "desc"]].to_dict("records")
 
-#if __name__ == '__main__':
+if __name__ == '__main__':
     #app.run(debug=True, dev_tools_ui=False, dev_tools_props_check=False, port=8010)
     #app.run(debug=True, dev_tools_ui=False, dev_tools_props_check=False, host='0.0.0.0', port=int(os.environ.get('PORT', 8010)))
-if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
