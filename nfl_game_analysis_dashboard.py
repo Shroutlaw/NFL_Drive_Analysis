@@ -83,7 +83,7 @@ big_home_pct = round(big_home_upset_rate * 100, 1)
 big_away_pct = round(big_away_upset_rate * 100, 1)
 
 # Create grouped game lookup
-grouped_games = dict(tuple(df.groupby('game_id')))
+#grouped_games = dict(tuple(df.groupby('game_id')))
 
 
 # Load game ID lists from Excel
