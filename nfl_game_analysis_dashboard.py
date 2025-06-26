@@ -85,7 +85,7 @@ grouped_games = dict(tuple(df.groupby('game_id')))
 
 
 # Load game ID lists from Excel
-id_excel = pd.ExcelFile("multi_flip_game_ids.xlsx")
+id_excel = pd.ExcelFile("season_data/multi_flip_game_ids.xlsx")
 
 #multi_flip_game_ids = id_excel.parse('multi_flip_game_ids')['game_id'].tolist()
 multi_flip_expected_winner_won = id_excel.parse('multi_flip_expected_winner_won')['game_id'].tolist()
@@ -118,8 +118,8 @@ multi_flip_seasons = game_id_to_season.loc[multi_flip_game_ids]
 
 # Count and sort by season
 seasonal_flip_counts = multi_flip_seasons.value_counts().sort_index()
-
-'''# Print the results
+'''
+# Print the results
 print("Multi-Flip Games by Season:")
 print(seasonal_flip_counts)
 
@@ -273,58 +273,7 @@ df_drive_wp['drive_impact_score'] = (
     df_drive_wp['wp_change'].abs() * df_drive_wp['epa_change'] * df_drive_wp['num_plays']
 )
 
-flip_points = []
-
-for game_id in unique_game_ids:
-    if game_id not in grouped_games or game_id not in end_game_lookup:
-        continue
-
-    game_df = grouped_games[game_id].sort_values(by=['qtr', 'time'], ascending=[True, False])
-
-    # Build expected winner sequence
-    winner_series = []
-    for idx, row in game_df.iterrows():
-        home_wp, away_wp = row.get('home_wp'), row.get('away_wp')
-        if pd.isna(home_wp) or pd.isna(away_wp):
-            continue
-        if home_wp > 0.5:
-            winner = 'home'
-        elif away_wp > 0.5:
-            winner = 'away'
-        else:
-            winner = 'none'
-        winner_series.append((idx, winner))
-
-    # Collapse to transitions only
-    cleaned = []
-    for i, (idx, winner) in enumerate(winner_series):
-        if not cleaned or winner != cleaned[-1][1]:
-            cleaned.append((idx, winner))
-    cleaned = [entry for entry in cleaned if entry[1] != 'none']
-
-    if len(cleaned) == 2:
-        flip_idx = cleaned[1][0]
-        flip_row = game_df.loc[flip_idx]
-        flip_qtr = flip_row['qtr']
-        flip_time = flip_row['time']
-        try:
-            if isinstance(flip_time, str) and ':' in flip_time:
-                try:
-                    mins, secs = map(int, flip_time.strip().split(':'))
-                    minutes_left = mins + secs / 60
-                except:
-                    minutes_left = None
-            else:
-                minutes_left = None
-        except:
-            minutes_left = None
-        total_score = flip_row['total_home_score'] + flip_row['total_away_score']
-        flip_points.append((flip_qtr, minutes_left, total_score))
-
-# Convert to DataFrame for plotting
-flip_df = pd.DataFrame(flip_points, columns=['qtr', 'minutes_left_in_qtr', 'total_score'])
-
-# Split into three groups
+flip_df = pd.read_excel("season_data/flip_points.xlsx")
 flip_df_all = flip_df.copy()
 flip_df_zero_score = flip_df[flip_df['total_score'] == 0]
 flip_df_nonzero_score = flip_df[flip_df['total_score'] != 0]
