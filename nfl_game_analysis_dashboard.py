@@ -972,4 +972,4 @@ def update_play_table(active_cell, table_data, game_id):
     #app.run(debug=True, dev_tools_ui=False, dev_tools_props_check=False, port=8010)
     #app.run(debug=True, dev_tools_ui=False, dev_tools_props_check=False, host='0.0.0.0', port=int(os.environ.get('PORT', 8010)))
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
