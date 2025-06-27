@@ -129,7 +129,7 @@ multi_flip_seasons = game_id_to_season.loc[multi_flip_game_ids]
 
 # Count and sort by season
 seasonal_flip_counts = multi_flip_seasons.value_counts().sort_index()
-
+'''
 # Print the results
 print("Multi-Flip Games by Season:")
 print(seasonal_flip_counts)
@@ -163,7 +163,7 @@ print(f"Expected winner LOST (upset): {len(multi_flip_expected_winner_lost)}")
 print("\nBig Spread Games with Multiple Flips That Went to Overtime:")
 print(f"Total overtime games: {len(multi_flip_overtime_games)}")
 print(f" - Expected winner WON in OT: {len(multi_flip_overtime_expected_winner_won)}")
-print(f" - Expected winner LOST in OT: {len(multi_flip_overtime_expected_winner_lost)}")
+print(f" - Expected winner LOST in OT: {len(multi_flip_overtime_expected_winner_lost)}")'''
 
 # Define summary stats from existing values
 summary_stats = {
@@ -275,17 +275,17 @@ app.layout = html.Div([
 
                         html.H4("🎯 Big Spread Expectations — and Where They Go Wrong", style={"marginBottom": "5px", "fontSize": "18px"}),
                         html.Ul([
-                            html.Li(f"{summary_stats['Big spread games (spread ≥ 6 pts)']} were considered big spread games (≥ 6 pts)"),
-                            html.P("Implication: These are games where sportsbooks and models project dominance, but their volatility is often underestimated.", style={"margin": "2px 0"}),
-
-                            html.Li(f"{summary_stats[' - Home favored']} home favorites, {summary_stats[' - Away favored']} away favorites"),
-                            html.P("Implication: Home teams dominate the big spread category, likely reflecting both data model and bettor confidence in home-field advantage.", style={"margin": "2px 0"}),
-
-                            html.Li(f"{summary_stats['Expected winner won']} expected winners won"),
+                            html.Li(f"In {summary_stats['Expected winner won']} games, the expected winners won."),
                             html.P("Implication: Models do reasonably well overall — but knowing when they fail is more valuable than when they succeed.", style={"margin": "2px 0"}),
 
-                            html.Li(f"{summary_stats['Upsets (expected winner lost)']} ended in upsets (~{summary_stats['Upsets (expected winner lost)'] / summary_stats['Total unique games']:.1%})"),
-                            html.P("Implication: A third of games go off-script. That’s a massive edge for sharp bettors or adaptive products.", style={"margin": "2px 0"}),
+                            html.Li(f"{summary_stats['Big spread games (spread ≥ 6 pts)']} of these games were considered big spread games (one team expected to win by 6 or more points.)"),
+                            html.P("Implication: These are games where sportsbooks and models project dominance, but their volatility is often underestimated. Whether you are betting 'Against the Spread' or 'Moneyline', these games could have high betting potential.", style={"margin": "2px 0"}),
+
+                            html.Li(f"Of those big spread games, {summary_stats[' - Home favored']} were home favorites, while {summary_stats[' - Away favored']} were away favorites"),
+                            html.P("Implication: Home teams dominate the big spread category, likely reflecting both data model and bettor confidence in home-field advantage.", style={"margin": "2px 0"}),
+
+                            html.Li(f"{summary_stats['Upsets (expected winner lost)']} ended in upsets or a tie. (~{summary_stats['Upsets (expected winner lost)'] / summary_stats['Total unique games']:.1%})"),
+                            html.P("Implication: A third of games go off-script. That’s a massive edge for sharp bettors or adaptive products. For more insight, we need to dig into these games and breakdown changes in momentum throughout the game.", style={"margin": "2px 0"}),
 
                             html.Li(f"{summary_stats['Upsets with spread ≥ 6']} of big spreads ended in upset (~{summary_stats['Upsets with spread ≥ 6'] / summary_stats['Big spread games (spread ≥ 6 pts)']:.1%})"),
                             html.P("Implication: Even so-called 'locks' fall apart. These games are ripe for hedging, alternate lines, or real-time alert systems.", style={"margin": "2px 0"}),
@@ -298,8 +298,8 @@ app.layout = html.Div([
                             html.Li("Games with high win probability flips signal high-risk outcomes."),
                             html.P("These games offer opportunities for smarter in-game decisions.", style={"margin": "2px 0"}),
 
-                            html.Li("Overtime in high-spread games is a serious warning sign."),
-                            html.P("If the game hits OT, history suggests you're now in toss-up territory.", style={"margin": "2px 0"}),
+                            html.Li("Overtime in high spread games is a serious warning sign for future games."),
+                            html.P("More research needs to be done to understand the main causes for this deficit in expectation.", style={"margin": "2px 0"}),
                         ]),
                     ], style={
                         "width": "58%", "padding": "8px", "fontSize": "15px",
