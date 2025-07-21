@@ -466,20 +466,20 @@ app.layout = html.Div([
                 html.Div([
                     html.H3("🔁 How Games Shift — The Flip Factor", style={"marginTop": "10px", "marginBottom": "5px", "fontSize": "18px"}),
                     html.Ul([
-                        html.Li(f"{summary_stats['Winner change: No change']} had no change in expected winner"),
+                        html.Li(f"{summary_stats['Winner change: No change']} games had no change in expected winner"),
                         html.P("Implication: About 15% of games stayed the course from kickoff to final whistle...", style={"margin": "2px 0"}),
 
-                        html.Li(f"{summary_stats['Winner change: One change']} had one flip"),
-                        html.P("Implication: These single-flip games reveal a moment of crisis or momentum swing.", style={"margin": "2px 0"}),
+                        html.Li(f"{summary_stats['Winner change: One change']} games had one flip"),
+                        html.P("Implication: These single-flip games reveal a moment of crisis or momentum swing... or a potential mistake by bookies", style={"margin": "2px 0"}),
 
-                        html.Li(f"{summary_stats['Winner change: Multiple changes']} had multiple flips"),
+                        html.Li(f"{summary_stats['Winner change: Multiple changes']} games changed their expect winner multiple times"),
                         html.P("Implication: Over 75% of games saw multiple shifts in expected winner...", style={"margin": "2px 0"}),
 
-                        html.Li(f"{summary_stats['Big spread winner change: Multiple changes']} big spreads had multiple flips"),
+                        html.Li(f"{summary_stats['Big spread winner change: Multiple changes']} games with a pregame expected winner of 6 points or more had multiple flips"),
                         html.P("Implication: Even the games sportsbooks feel most confident in are unstable...", style={"margin": "2px 0"}),
 
                         html.Li(f"{summary_stats['Big spread multi-flip games - Expected winner LOST']} of those ended in upsets"),
-                        html.P("Implication: When chaos meets expectation, the expected winner is vulnerable...", style={"margin": "2px 0"}),
+                        html.P("Implication: When chaos meets expectation, the expected winner is vulnerable... More research needs to be done to understand why these upsets occurred", style={"margin": "2px 0"}),
                         ]),
                     html.H3("📈 Multi-Flip Game Trends Across Seasons", style={"marginTop": "10px"}),
                     html.P("This chart tracks how often the expected winner changed more than once during a game — a key signal of in-game volatility. A higher count implies a more competitive season overall.", style={"fontSize": "15px"}),
